@@ -7,11 +7,12 @@ import CandidateJobDetail from '../components/candidate/CandidateJobDetail';
 import VideoIntro from '../components/candidate/VideoIntro';
 import PracticeInterview from '../components/candidate/PracticeInterview';
 import ProfileEditor from '../components/candidate/ProfileEditor';
+import ApplicationKanban from '../components/candidate/ApplicationKanban';
 
 import { 
   ArrowLeft, LayoutDashboard, User, Video, 
   Briefcase, LineChart, Bell, Sun, Moon, 
-  Menu, X, Search, Home, Brain
+  Menu, X, Search, Home, Brain, Layers
 } from 'lucide-react';
 
 const CandidateDashboard = () => {
@@ -36,12 +37,12 @@ const CandidateDashboard = () => {
     return (
       <button 
         onClick={() => { setView(id); setSelectedJob(null); setMobileMenuOpen(false); }}
-        className={`flex flex-col items-center justify-center min-w-[80px] h-full transition-all relative group ${
+        className={`flex flex-col items-center justify-center min-w-[70px] h-full transition-all relative group ${
           isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
         }`}
       >
         <Icon size={24} strokeWidth={isActive ? 2.5 : 1.5} />
-        <span className="text-[11px] mt-1 font-medium hidden md:block">{label}</span>
+        <span className="text-[10px] mt-1 font-medium hidden md:block">{label}</span>
         {isActive && (
           <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-slate-900 dark:bg-white animate-in slide-in-from-bottom-full" />
         )}
@@ -75,11 +76,12 @@ const CandidateDashboard = () => {
           {/* Navigation Links */}
           <nav className="hidden md:flex h-full items-center">
             <NavItem id="overview" icon={Home} label="Home" />
-            <NavItem id="profile" icon={User} label="My Profile" />
-            <NavItem id="video" icon={Video} label="Video Intro" />
+            <NavItem id="profile" icon={User} label="Profile" />
+            <NavItem id="video" icon={Video} label="Pitch" />
             <NavItem id="jobs" icon={Briefcase} label="Jobs" />
-            <NavItem id="ats" icon={LineChart} label="ATS Checker" />
+            <NavItem id="ats" icon={LineChart} label="Audit" />
             <NavItem id="interview" icon={Brain} label="Practice" />
+            <NavItem id="tracker" icon={Layers} label="Tracker" />
           </nav>
 
           {/* User Tools */}
@@ -94,20 +96,21 @@ const CandidateDashboard = () => {
             <button className="md:hidden p-2 text-slate-500" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X size={24}/> : <Menu size={24}/>}
             </button>
-            <div className="w-8 h-8 rounded-full bg-slate-200 border border-white shadow-sm flex items-center justify-center text-[10px] font-bold shrink-0">CU</div>
+            <div className="w-8 h-8 rounded-full bg-slate-200 border border-white shadow-sm flex items-center justify-center text-[10px] font-bold shrink-0">TS</div>
           </div>
         </div>
       </header>
 
       {/* MOBILE NAVIGATION OVERLAY */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-16 z-[90] bg-white dark:bg-slate-900 p-6 flex flex-col gap-4 animate-in slide-in-from-top duration-300">
+        <div className="md:hidden fixed inset-0 top-16 z-[90] bg-white dark:bg-slate-900 p-6 flex flex-col gap-4 animate-in slide-in-from-top duration-300 overflow-y-auto pb-24">
           <button onClick={() => { setView('overview'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b">Overview</button>
           <button onClick={() => { setView('profile'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b">My Profile</button>
           <button onClick={() => { setView('video'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b">Video Pitch</button>
           <button onClick={() => { setView('jobs'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b">Job Openings</button>
           <button onClick={() => { setView('ats'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b">ATS Checker</button>
           <button onClick={() => { setView('interview'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b">Mock Interview</button>
+          <button onClick={() => { setView('tracker'); setMobileMenuOpen(false); }} className="flex items-center gap-4 text-lg font-bold p-3 border-b border-slate-200 dark:border-slate-800">Application Tracker</button>
         </div>
       )}
 
@@ -158,6 +161,13 @@ const CandidateDashboard = () => {
            {view === 'interview' && (
              <div className="animate-in fade-in duration-500">
                <PracticeInterview />
+             </div>
+           )}
+
+           {/* VIEW: APPLICATION KANBAN TRACKER */}
+           {view === 'tracker' && (
+             <div className="animate-in fade-in duration-500">
+               <ApplicationKanban />
              </div>
            )}
 
