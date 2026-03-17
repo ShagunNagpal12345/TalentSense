@@ -188,6 +188,181 @@ export const evaluateCandidate = async (resumeText, jdText) => {
  * FUNCTION 4: ANALYZE RESUME (Candidate Database Match)
  * ============================================================
  */
+
+/**
+ * ============================================================
+ * FUNCTION 5: DEEP RESUME ANALYSIS (Recruiter - New Candidates)
+ * ============================================================
+ */
+export const deepResumeAnalysis = async (resumeText, jdText) => {
+  if (keyResume === "gsk_placeholder") {
+    console.warn("Missing API Key. Returning mock deep resume analysis.");
+    return {
+      basicInfo: {
+        totalYearsExp: "5",
+        education: "B.Tech CS",
+        currentRole: "Software Engineer",
+        skills: ["JavaScript", "React", "Node.js", "SQL", "AWS"]
+      },
+      noticePeriod: "30 days",
+      jdComparison: {
+        requiredSkills: ["React", "TypeScript", "Node.js"],
+        candidateHas: ["React", "Node.js"],
+        additionalSkills: ["SQL", "AWS"],
+        missingSkills: ["TypeScript"]
+      },
+      matchScore: 82,
+      matchExplanation: "Candidate has strong core skills matching the JD. Missing TypeScript but otherwise a solid fit.",
+      aiDecision: "Good match - recommend interview",
+      educationAnalysis: "B.Tech CS is a solid foundation for this role.",
+      experienceAnalysis: "5 years of relevant experience with hands-on React and Node.js development."
+    };
+  }
+
+  const prompt = `
+    JOB DESCRIPTION:
+    "${(jdText || 'Generic Software Role').substring(0, 1500)}"
+
+    RESUME TEXT:
+    "${resumeText.substring(0, 3000)}"
+
+    TASK: Perform a deep structured analysis of this candidate against the job description.
+
+    RETURN STRICTLY THIS JSON:
+    {
+      "basicInfo": {
+        "totalYearsExp": "String (e.g. '7')",
+        "education": "String (e.g. 'B.Tech CS, IIT Delhi')",
+        "currentRole": "String",
+        "skills": ["String"]
+      },
+      "noticePeriod": "String (e.g. '30 days' or 'Immediate' or 'N/A')",
+      "jdComparison": {
+        "requiredSkills": ["String"],
+        "candidateHas": ["String"],
+        "additionalSkills": ["String"],
+        "missingSkills": ["String"]
+      },
+      "matchScore": Number (0-100),
+      "matchExplanation": "String (2-3 sentences)",
+      "aiDecision": "String (e.g. 'Strong match - recommend shortlisting')",
+      "educationAnalysis": "String",
+      "experienceAnalysis": "String"
+    }
+  `;
+
+  try {
+    const completion = await groqResume.chat.completions.create({
+      messages: [
+        { role: "system", content: "You are an expert Technical Recruiter AI. Output ONLY valid JSON. No markdown." },
+        { role: "user", content: prompt }
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.1,
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
+  } catch (error) {
+    console.error("❌ Deep Resume Analysis Error:", error);
+    return {
+      basicInfo: { totalYearsExp: "N/A", education: "N/A", currentRole: "N/A", skills: [] },
+      noticePeriod: "N/A",
+      jdComparison: { requiredSkills: [], candidateHas: [], additionalSkills: [], missingSkills: [] },
+      matchScore: 75,
+      matchExplanation: "AI analysis encountered an error. Showing fallback evaluation.",
+      aiDecision: "Review manually",
+      educationAnalysis: "Unable to analyze due to error.",
+      experienceAnalysis: "Unable to analyze due to error."
+    };
+  }
+};
+
+/**
+ * ============================================================
+ * FUNCTION 6: ATS SCORE ANALYSIS VIA GROQ (Candidate Portal)
+ * ============================================================
+ */
+export const analyzeATSWithGroq = async (resumeText, jobDescription) => {
+  if (keyResume === "gsk_placeholder") {
+    console.warn("Missing API Key. Returning mock ATS data.");
+    return {
+      overallScore: 84,
+      keywordMatchPercent: 72,
+      parsingScore: 96,
+      sentiment: "Highly Competitive",
+      summary: "Your resume performs well across ATS parsing and keyword coverage. Focus on quantifying your impact and targeting role-specific keywords.",
+      foundKeywords: ["Python", "SQL", "Tableau", "Power BI", "Data Analysis", "ETL"],
+      missingKeywords: ["Cloud Architecture", "Agile Leadership", "Data Warehousing"],
+      improvements: [
+        "Quantify your achievements with specific metrics (e.g., '40% reduction in reporting time')",
+        "Add missing keywords naturally throughout your experience section",
+        "Ensure your email is not in the document header/footer"
+      ],
+      parsingChecks: [
+        { label: "Standard Font Check", status: "pass", detail: "Clean, ATS-readable fonts detected." },
+        { label: "Section Header Logic", status: "pass", detail: "Experience, Skills, Education mapped correctly." },
+        { label: "Image/Graphic Interference", status: "pass", detail: "No unreadable graphics found." },
+        { label: "Header/Footer Security", status: "fail", detail: "Contact info may be in header - risk of bypass." }
+      ]
+    };
+  }
+
+  const prompt = `
+    RESUME TEXT:
+    "${resumeText.substring(0, 3000)}"
+
+    JOB DESCRIPTION (Optional Target):
+    "${(jobDescription || 'General professional role').substring(0, 1500)}"
+
+    TASK: Perform a comprehensive ATS analysis.
+
+    RETURN THIS EXACT JSON STRUCTURE:
+    {
+      "overallScore": Number (0-100),
+      "keywordMatchPercent": Number (0-100),
+      "parsingScore": Number (0-100),
+      "sentiment": "String (e.g. 'Highly Competitive' / 'Average' / 'Needs Improvement')",
+      "summary": "String (2-3 sentence executive summary of the resume's ATS performance)",
+      "foundKeywords": ["String"],
+      "missingKeywords": ["String"],
+      "improvements": ["String (actionable suggestion)"],
+      "parsingChecks": [
+        { "label": "String", "status": "pass|fail|warn", "detail": "String" }
+      ]
+    }
+  `;
+
+  try {
+    const completion = await groqResume.chat.completions.create({
+      messages: [
+        { role: "system", content: "You are an expert ATS Resume Analyst. Output ONLY valid JSON." },
+        { role: "user", content: prompt }
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.2,
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
+  } catch (error) {
+    console.error("❌ ATS Analysis Error:", error);
+    return {
+      overallScore: 80,
+      keywordMatchPercent: 70,
+      parsingScore: 90,
+      sentiment: "Competitive",
+      summary: "AI analysis encountered an error. This is a fallback evaluation. Your resume appears to be generally well-structured.",
+      foundKeywords: ["Professional Experience", "Education", "Skills"],
+      missingKeywords: [],
+      improvements: ["Ensure keywords from the target job description are present", "Quantify achievements"],
+      parsingChecks: [
+        { label: "Standard Font Check", status: "pass", detail: "Fonts appear readable." },
+        { label: "Section Header Logic", status: "pass", detail: "Standard sections detected." }
+      ]
+    };
+  }
+};
 export const analyzeResumeGroq = async (resumeText, jdText) => {
   if (keyResume === "gsk_placeholder") {
     console.warn("Missing API Key. Returning mock Resume vs JD analysis.");

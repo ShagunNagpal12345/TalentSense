@@ -1,23 +1,25 @@
 import React, { useState } from 'react';
-import { 
-  ArrowLeft, Briefcase, MapPin, DollarSign, Clock, 
+import {
+  ArrowLeft, Briefcase, MapPin, DollarSign, Clock,
   CheckCircle, FileText, X, Video, UploadCloud, Loader2
 } from 'lucide-react';
 import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
 import { useApplicationStore } from '../../core/stores/applicationStore';
+import { useVideoStore } from '../../core/stores/videoStore';
 import { extractTextFromFile } from '../../core/utils/fileParser';
+import CurrencyInput from '../shared/CurrencyInput';
 
 const CandidateJobDetail = ({ job, onBack }) => {
   const currentCandidate = useRecruitmentStore((state) => state.currentCandidate);
   const applyForJob = useRecruitmentStore((state) => state.applyForJob);
-  
-  // Connect to the new Kanban Application Store
+
   const { applications, addApplication } = useApplicationStore();
   const hasApplied = applications.some(app => app.jobId === job.id);
 
+  // Feature 1: use real video store
+  const { videoIntros } = useVideoStore();
+
   const [showApplyModal, setShowApplyModal] = useState(false);
-  
-  // States for file parsing
   const [isParsing, setIsParsing] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
 
@@ -26,8 +28,8 @@ const CandidateJobDetail = ({ job, onBack }) => {
     email: currentCandidate.email || "",
     phone: "",
     skills: "",
-    resumeText: "", 
-    resumeUrl: "",  
+    resumeText: "",
+    resumeUrl: "",
     noticePeriod: "",
     currentCTC: "",
     expectedCTC: "",
@@ -36,7 +38,6 @@ const CandidateJobDetail = ({ job, onBack }) => {
     videoUrl: ""
   });
 
-  // Handle File Upload & Parsing
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -46,13 +47,13 @@ const CandidateJobDetail = ({ job, onBack }) => {
       const extractedText = await extractTextFromFile(file);
       const fileUrl = URL.createObjectURL(file);
 
-      setFormData(prev => ({ 
-        ...prev, 
+      setFormData(prev => ({
+        ...prev,
         resumeText: extractedText,
-        resumeUrl: fileUrl 
+        resumeUrl: fileUrl
       }));
       setUploadedFileName(file.name);
-      
+
     } catch (error) {
       console.error("Failed to parse candidate resume:", error);
       alert("Could not read the file. Please try another PDF or DOCX.");
@@ -68,11 +69,9 @@ const CandidateJobDetail = ({ job, onBack }) => {
       return;
     }
 
-    // 1. Add to Kanban Tracker
     const success = addApplication(job);
-    
+
     if (success) {
-      // 2. Add to Recruiter Store (so the recruiter can see it later)
       applyForJob(job.id, formData);
       setShowApplyModal(false);
       alert("Application submitted successfully! You can track it in your Tracker.");
@@ -98,7 +97,7 @@ const CandidateJobDetail = ({ job, onBack }) => {
               <span className="flex items-center gap-1.5"><DollarSign className="w-4 h-4 text-emerald-500"/> {job.salary || "Competitive"}</span>
             </div>
           </div>
-          
+
           <div className="w-full md:w-auto">
             {hasApplied ? (
               <div className="px-8 py-3 w-full md:w-auto justify-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
@@ -118,7 +117,7 @@ const CandidateJobDetail = ({ job, onBack }) => {
           <div className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
             {job.fullText || "No detailed description provided for this role. Please reach out to the recruiter for more information."}
           </div>
-          
+
           <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-10 mb-4 border-t border-slate-100 dark:border-slate-800 pt-8">Required Skills</h3>
           <div className="flex flex-wrap gap-2">
             {(job.skills?.hard || job.skills || []).map((s, i) => (
@@ -134,7 +133,7 @@ const CandidateJobDetail = ({ job, onBack }) => {
       {showApplyModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-            
+
             <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-6 flex justify-between items-center z-10">
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Submit Application</h2>
               <button onClick={() => setShowApplyModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition">
@@ -143,14 +142,14 @@ const CandidateJobDetail = ({ job, onBack }) => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              
+
               {/* Smart Uploader */}
               <div className="border-2 border-dashed border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl p-6 text-center relative overflow-hidden group hover:bg-blue-50 transition-colors">
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   id="candidate-resume-upload"
-                  className="hidden" 
-                  onChange={handleFileUpload} 
+                  className="hidden"
+                  onChange={handleFileUpload}
                   accept=".pdf,.docx,.txt"
                   required={!formData.resumeText}
                 />
@@ -180,7 +179,7 @@ const CandidateJobDetail = ({ job, onBack }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Full Name *</label>
@@ -225,14 +224,25 @@ const CandidateJobDetail = ({ job, onBack }) => {
                   </select>
                 </div>
 
+                {/* Feature 12: CurrencyInput for CTC fields */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Current CTC (LPA) *</label>
-                  <input required type="text" placeholder="e.g. 15 LPA" value={formData.currentCTC} onChange={e => setFormData({...formData, currentCTC: e.target.value})} className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:border-[#0A66C2]" />
+                  <CurrencyInput
+                    label="Current CTC"
+                    value={formData.currentCTC}
+                    onChange={(val) => setFormData({...formData, currentCTC: val})}
+                    placeholder="e.g. 1500000"
+                    required
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Expected CTC (LPA) *</label>
-                  <input required type="text" placeholder="e.g. 22 LPA" value={formData.expectedCTC} onChange={e => setFormData({...formData, expectedCTC: e.target.value})} className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:border-[#0A66C2]" />
+                  <CurrencyInput
+                    label="Expected CTC"
+                    value={formData.expectedCTC}
+                    onChange={(val) => setFormData({...formData, expectedCTC: val})}
+                    placeholder="e.g. 2200000"
+                    required
+                  />
                 </div>
 
                 <div className="md:col-span-2">
@@ -240,14 +250,33 @@ const CandidateJobDetail = ({ job, onBack }) => {
                   <input required type="text" placeholder="City, State" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:border-[#0A66C2]" />
                 </div>
 
+                {/* Feature 1: Dynamic video dropdown from videoStore */}
                 <div className="md:col-span-2 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Video className="w-4 h-4 text-[#0A66C2]"/> Video Introduction *</label>
-                  <select required value={formData.videoUrl} onChange={e => setFormData({...formData, videoUrl: e.target.value})} className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-[#0A66C2]">
-                    <option value="">Attach your recorded pitch...</option>
-                    <option value="pitch-1">Video Pitch 1: General Background (45s)</option>
-                    <option value="pitch-2">Video Pitch 2: Technical Focus (60s)</option>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Video className="w-4 h-4 text-[#0A66C2]"/> Video Introduction
+                  </label>
+                  <select
+                    value={formData.videoUrl}
+                    onChange={e => setFormData({...formData, videoUrl: e.target.value})}
+                    className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:border-[#0A66C2]"
+                  >
+                    <option value="">Attach your recorded pitch (optional)...</option>
+                    {videoIntros.length === 0 ? (
+                      <option value="" disabled>No Video Uploaded — Record one in Video Pitch tab</option>
+                    ) : (
+                      videoIntros.map((v) => (
+                        <option key={v.id} value={v.url || v.id}>
+                          {v.title} — Recorded {v.date}
+                        </option>
+                      ))
+                    )}
                   </select>
-                  <p className="text-xs text-slate-500 mt-2 font-medium">Recruiters will view this video alongside your resume and ATS score.</p>
+                  <p className="text-xs text-slate-500 mt-2 font-medium">
+                    {videoIntros.length === 0
+                      ? 'Record your video pitch in the Video Pitch tab to attach it to your application.'
+                      : 'Recruiters will view this video alongside your resume and ATS score.'
+                    }
+                  </p>
                 </div>
               </div>
 

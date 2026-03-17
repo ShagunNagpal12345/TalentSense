@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import {
   ArrowLeft, Calendar, Clock, CheckCircle,
   ChevronLeft, ChevronRight, Video, Phone,
-  MapPin, User, X, Sparkles
+  MapPin, User, X, Sparkles, Briefcase, Link
 } from 'lucide-react';
 import { useScheduleStore } from '../../core/stores/scheduleStore';
+import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
 
 // Generate mock available dates for the next 3 weeks
 const generateAvailableDates = () => {
@@ -16,7 +17,7 @@ const generateAvailableDates = () => {
     const d = new Date(today);
     d.setDate(today.getDate() + offset);
     const day = d.getDay();
-    if (day !== 0 && day !== 6) { // skip weekends
+    if (day !== 0 && day !== 6) {
       dates.push(new Date(d));
       added++;
     }
@@ -32,7 +33,6 @@ const TIME_SLOTS = [
   '04:00 PM', '04:30 PM', '05:00 PM'
 ];
 
-// Make some slots appear 'taken' consistently based on date
 const BUSY_SLOTS = ['09:30 AM', '10:30 AM', '02:00 PM', '03:00 PM'];
 
 const INTERVIEW_TYPES = [
@@ -51,10 +51,24 @@ const INTERVIEW_DURATIONS = [
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
-  const { scheduleInterview, scheduledInterviews } = useScheduleStore();
+const InterviewScheduler = ({ candidate: propCandidate, onBack, onConfirm }) => {
+  const { scheduleInterview } = useScheduleStore();
+  const allCandidates = useRecruitmentStore(state => state.candidates);
+  const allJobs = useRecruitmentStore(state => state.jobs);
+  const updateCandidate = useRecruitmentStore(state => state.updateCandidate);
 
   const availableDates = generateAvailableDates();
+
+  // Feature 7: Candidate + Requisition dropdowns
+  const [selectedCandidateId, setSelectedCandidateId] = useState(propCandidate?.id || '');
+  const [selectedJobId, setSelectedJobId] = useState(propCandidate?.jobId || '');
+
+  // Active candidate = passed prop OR selected from dropdown
+  const activeCandidate = propCandidate
+    || allCandidates.find(c => c.id === selectedCandidateId)
+    || null;
+
+  const activeJobs = allJobs.filter(j => j.status !== 'Closed');
 
   const [currentMonthOffset, setCurrentMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -62,6 +76,7 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
   const [selectedType, setSelectedType] = useState('video');
   const [selectedDuration, setSelectedDuration] = useState(45);
   const [interviewerName, setInterviewerName] = useState('Jamie Davidson');
+  const [meetingLink, setMeetingLink] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Calendar logic
@@ -102,22 +117,38 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
   const handleConfirm = () => {
     if (!selectedDate || !selectedTime) return;
 
+    const dateStr = selectedDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
     const interview = {
-      candidateId: candidate?.id || 'unknown',
-      candidateName: candidate?.name || 'Candidate',
-      date: selectedDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      candidateId: activeCandidate?.id || 'unknown',
+      candidateName: activeCandidate?.name || 'Candidate',
+      date: dateStr,
       time: selectedTime,
       type: selectedType,
       duration: selectedDuration,
       interviewer: interviewerName,
-      jobTitle: candidate?.role || candidate?.jobTitle || 'Open Position'
+      meetingLink: meetingLink,
+      jobTitle: activeCandidate?.role || activeCandidate?.jobTitle || 'Open Position',
+      jobId: selectedJobId || activeCandidate?.jobId || ''
     };
 
     scheduleInterview(interview);
+
+    // Update candidate record if we have one
+    if (activeCandidate?.id) {
+      updateCandidate(activeCandidate.id, {
+        interviewScheduled: {
+          date: dateStr,
+          time: selectedTime,
+          type: selectedType,
+          meetingLink: meetingLink
+        }
+      });
+    }
+
     setShowConfirmation(true);
   };
 
-  // Confirmation modal
   if (showConfirmation) {
     return (
       <div className="max-w-2xl mx-auto pb-20 animate-in fade-in zoom-in-95 duration-300">
@@ -127,7 +158,6 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
           </button>
         )}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          {/* Success banner */}
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-8 text-center">
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-white" />
@@ -136,12 +166,11 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
             <p className="text-white/80 text-sm font-medium">Confirmation has been sent to all parties.</p>
           </div>
 
-          {/* Details */}
           <div className="p-8 space-y-5">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-slate-400 font-medium text-xs uppercase tracking-wider mb-1">Candidate</p>
-                <p className="font-bold text-slate-900 dark:text-white">{candidate?.name || 'Candidate'}</p>
+                <p className="font-bold text-slate-900 dark:text-white">{activeCandidate?.name || 'Candidate'}</p>
               </div>
               <div>
                 <p className="text-slate-400 font-medium text-xs uppercase tracking-wider mb-1">Interviewer</p>
@@ -159,7 +188,7 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
               </div>
               <div>
                 <p className="text-slate-400 font-medium text-xs uppercase tracking-wider mb-1">Format</p>
-                <p className="font-bold text-slate-900 dark:text-white capitalize">{selectedType.replace(/([A-Z])/g, ' $1').trim()}</p>
+                <p className="font-bold text-slate-900 dark:text-white capitalize">{selectedType}</p>
               </div>
               <div>
                 <p className="text-slate-400 font-medium text-xs uppercase tracking-wider mb-1">Duration</p>
@@ -168,6 +197,13 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
                 </p>
               </div>
             </div>
+
+            {meetingLink && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-1">Meeting Link</p>
+                <a href={meetingLink} target="_blank" rel="noreferrer" className="text-xs text-[#0A66C2] hover:underline break-all">{meetingLink}</a>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <button
@@ -194,10 +230,7 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
   return (
     <div className="max-w-5xl mx-auto pb-20 animate-in fade-in duration-400">
       {onBack && (
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-slate-500 hover:text-[#0A66C2] font-bold text-sm mb-6 transition-colors"
-        >
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-[#0A66C2] font-bold text-sm mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
       )}
@@ -207,12 +240,59 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
           <Calendar className="text-[#0A66C2]" /> Schedule Interview
         </h1>
-        {candidate && (
+        {activeCandidate && (
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium flex items-center gap-2">
-            <User size={14} /> {candidate.name || 'Candidate'} · {candidate.role || candidate.jobTitle || 'Position'}
+            <User size={14} /> {activeCandidate.name} · {activeCandidate.role || activeCandidate.jobTitle || 'Position'}
           </p>
         )}
       </div>
+
+      {/* Feature 7: Candidate + Requisition Dropdowns */}
+      {!propCandidate && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-5 mb-6">
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Select Candidate & Requisition</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                <User size={11}/> Candidate
+              </label>
+              <select
+                value={selectedCandidateId}
+                onChange={(e) => {
+                  setSelectedCandidateId(e.target.value);
+                  const c = allCandidates.find(c => c.id === e.target.value);
+                  if (c?.jobId) setSelectedJobId(c.jobId);
+                }}
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded-xl text-sm outline-none focus:border-[#0A66C2] text-slate-800 dark:text-white"
+              >
+                <option value="">-- Select Candidate --</option>
+                {allCandidates.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {c.role} ({c.match}% match)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                <Briefcase size={11}/> Requisition
+              </label>
+              <select
+                value={selectedJobId}
+                onChange={(e) => setSelectedJobId(e.target.value)}
+                className="w-full p-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded-xl text-sm outline-none focus:border-[#0A66C2] text-slate-800 dark:text-white"
+              >
+                <option value="">-- Select Job --</option>
+                {activeJobs.map(j => (
+                  <option key={j.id} value={j.id}>
+                    {j.title} — {j.client}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -250,11 +330,9 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
 
             {/* Days grid */}
             <div className="grid grid-cols-7 gap-1">
-              {/* Empty cells before first day */}
               {[...Array(firstDayOfMonth)].map((_, i) => (
                 <div key={`empty-${i}`} />
               ))}
-              {/* Day cells */}
               {[...Array(daysInMonth)].map((_, i) => {
                 const day = i + 1;
                 const available = isAvailable(day);
@@ -394,6 +472,21 @@ const InterviewScheduler = ({ candidate, onBack, onConfirm }) => {
                   value={interviewerName}
                   onChange={(e) => setInterviewerName(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-950 focus:outline-none focus:border-[#0A66C2] dark:text-white transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Meeting Link */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Meeting Link (Optional)</p>
+              <div className="relative">
+                <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={meetingLink}
+                  onChange={(e) => setMeetingLink(e.target.value)}
+                  placeholder="https://meet.google.com/... or Zoom link"
+                  className="w-full pl-9 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-950 focus:outline-none focus:border-[#0A66C2] dark:text-white placeholder:text-slate-400 transition-colors"
                 />
               </div>
             </div>

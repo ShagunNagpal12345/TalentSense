@@ -12,6 +12,7 @@ export const useScheduleStore = create(
           {
             id: `interview-${Date.now()}`,
             ...interview,
+            meetingLink: interview.meetingLink || '',
             scheduledAt: new Date().toISOString(),
             status: 'confirmed'
           }

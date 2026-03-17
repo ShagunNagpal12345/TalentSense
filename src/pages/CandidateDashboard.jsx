@@ -9,11 +9,12 @@ import PracticeInterview from '../components/candidate/PracticeInterview';
 import ProfileEditor from '../components/candidate/ProfileEditor';
 import ApplicationKanban from '../components/candidate/ApplicationKanban';
 
-import { 
-  ArrowLeft, LayoutDashboard, User, Video, 
-  Briefcase, LineChart, Bell, Sun, Moon, 
+import {
+  ArrowLeft, LayoutDashboard, User, Video,
+  Briefcase, LineChart, Sun, Moon,
   Menu, X, Search, Home, Brain, Layers
 } from 'lucide-react';
+import NotificationBell from '../components/shared/NotificationBell';
 
 const CandidateDashboard = () => {
   const [view, setView] = useState('overview'); 
@@ -89,10 +90,7 @@ const CandidateDashboard = () => {
             <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <button className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-              <Bell size={20} />
-              <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></div>
-            </button>
+            <NotificationBell portal="candidate" />
             <button className="md:hidden p-2 text-slate-500" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X size={24}/> : <Menu size={24}/>}
             </button>

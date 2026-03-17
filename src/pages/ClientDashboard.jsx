@@ -321,11 +321,11 @@
 
 // export default ClientDashboard;
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, LayoutGrid, ChevronRight,
-  Bell, Sun, Moon, Plus, Sparkles, Play, Calendar
+  Sun, Moon, Sparkles, Play, Calendar, Kanban
 } from 'lucide-react';
 
 // IMPORT THE STORE
@@ -338,9 +338,127 @@ import DashboardOverview from '../components/client/DashboardOverview';
 import JobDetailView from '../components/client/JobDetailView';
 import AsyncVideoReview from '../components/client/AsyncVideoReview';
 import InterviewScheduler from '../components/shared/InterviewScheduler';
+import ClientCandidateModal from '../components/client/ClientCandidateModal';
+import NotificationBell from '../components/shared/NotificationBell';
+
+// Feature 10: Requisition Kanban sub-component
+const REQ_KANBAN_COLS = ['Submitted', 'Shortlisted', 'Interview', 'Offer', 'Rejected'];
+
+const RequisitionKanban = () => {
+  const allCandidates = useRecruitmentStore(state => state.candidates);
+  const updateCandidate = useRecruitmentStore(state => state.updateCandidate);
+  const moveCandidate = useRecruitmentStore(state => state.moveCandidate);
+  const jobs = useRecruitmentStore(state => state.jobs);
+  const [selectedKanbanCandidate, setSelectedKanbanCandidate] = useState(null);
+  const [selectedJobFilter, setSelectedJobFilter] = useState('all');
+  const [dragId, setDragId] = useState(null);
+
+  const clientCandidates = useMemo(() =>
+    allCandidates.filter(c =>
+      c.sentToClient === true || c.status === 'Client Review' ||
+      REQ_KANBAN_COLS.includes(c.status)
+    ).filter(c =>
+      selectedJobFilter === 'all' || c.jobId == selectedJobFilter
+    ),
+    [allCandidates, selectedJobFilter]
+  );
+
+  const getColCandidates = (col) => clientCandidates.filter(c => {
+    if (col === 'Submitted') return c.status === 'Client Review' || c.status === 'Submitted';
+    return c.status === col;
+  });
+
+  const handleDrop = (col, e) => {
+    e.preventDefault();
+    if (!dragId) return;
+    const mapped = col === 'Submitted' ? 'Client Review' : col;
+    moveCandidate(dragId, mapped);
+    setDragId(null);
+  };
+
+  return (
+    <div className="space-y-4 animate-in fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Requisition Kanban</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Track submitted candidates across stages</p>
+        </div>
+        <select
+          value={selectedJobFilter}
+          onChange={e => setSelectedJobFilter(e.target.value)}
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#0A66C2]"
+        >
+          <option value="all">All Positions</option>
+          {jobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+        </select>
+      </div>
+
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        {REQ_KANBAN_COLS.map(col => (
+          <div
+            key={col}
+            className="shrink-0 w-56"
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => handleDrop(col, e)}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">{col}</span>
+              <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                {getColCandidates(col).length}
+              </span>
+            </div>
+            <div className="space-y-3 min-h-[200px]">
+              {getColCandidates(col).map(c => (
+                <div
+                  key={c.id}
+                  draggable
+                  onDragStart={() => setDragId(c.id)}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm cursor-grab hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#0A66C2]/10 text-[#0A66C2] font-black text-sm flex items-center justify-center shrink-0">
+                      {c.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <button
+                        onClick={() => setSelectedKanbanCandidate(c)}
+                        className="font-bold text-sm text-slate-900 dark:text-white hover:text-[#0A66C2] transition-colors truncate block w-full text-left"
+                      >
+                        {c.name}
+                      </button>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{c.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.match >= 80 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {c.match}% match
+                    </span>
+                    <span className="text-[10px] text-slate-400">{c.noticePeriod || ''}</span>
+                  </div>
+                </div>
+              ))}
+              {getColCandidates(col).length === 0 && (
+                <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center">
+                  <p className="text-[10px] text-slate-400 font-bold">Drop here</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selectedKanbanCandidate && (
+        <ClientCandidateModal
+          candidate={selectedKanbanCandidate}
+          onClose={() => setSelectedKanbanCandidate(null)}
+        />
+      )}
+    </div>
+  );
+};
 
 const ClientDashboard = () => {
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'create' | 'details' | 'video-review' | 'scheduler'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'create' | 'details' | 'video-review' | 'scheduler' | 'req-kanban'
   const [createStep, setCreateStep] = useState('upload');
   const [uploadedJdText, setUploadedJdText] = useState('');
   const [selectedJob, setSelectedJob] = useState(null);
@@ -352,13 +470,6 @@ const ClientDashboard = () => {
   const jobs = useRecruitmentStore((state) => state.jobs);
   const addJob = useRecruitmentStore((state) => state.addJob);
   const deleteJob = useRecruitmentStore((state) => state.deleteJob);
-
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Recruiter added a note on Rahul Sharma", time: "2 mins ago", read: false },
-    { id: 2, text: "New Candidate 'Vikram' added to DevOps role", time: "1 hour ago", read: false },
-  ]);
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   // --- THEME EFFECT ---
   useEffect(() => {
@@ -505,6 +616,12 @@ const ClientDashboard = () => {
             {/* Quick nav buttons */}
             <div className="hidden md:flex items-center gap-2">
               <button
+                onClick={() => setView('req-kanban')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'req-kanban' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              >
+                <Kanban className="w-3 h-3" /> Kanban
+              </button>
+              <button
                 onClick={() => setView('video-review')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'video-review' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
               >
@@ -524,27 +641,7 @@ const ClientDashboard = () => {
                 {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
 
-              <div className="relative">
-                <button onClick={() => setShowNotifs(!showNotifs)} className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-600 dark:text-slate-400">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>}
-                </button>
-                {showNotifs && (
-                  <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50">
-                     <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notifications</div>
-                     <div className="max-h-64 overflow-y-auto">
-                        {notifications.length > 0 ? notifications.map(n => (
-                          <div key={n.id} className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/50 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors text-slate-700 dark:text-slate-300">
-                            {n.text}
-                            <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-1">{n.time}</span>
-                          </div>
-                        )) : (
-                          <div className="p-4 text-center text-sm text-slate-500">No new notifications.</div>
-                        )}
-                     </div>
-                  </div>
-                )}
-              </div>
+              <NotificationBell portal="client" />
 
               {/* Profile Avatar */}
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-100 to-indigo-100 dark:from-sky-900/30 dark:to-indigo-900/30 border border-sky-200 dark:border-indigo-800 flex items-center justify-center text-sky-700 dark:text-sky-400 font-bold text-sm shadow-sm cursor-pointer hover:shadow-md transition">
@@ -608,6 +705,13 @@ const ClientDashboard = () => {
               onBack={() => setView(schedulerCandidate ? 'video-review' : 'dashboard')}
               onConfirm={() => setView('dashboard')}
             />
+          </div>
+        )}
+
+        {/* VIEW: REQUISITION KANBAN (Feature 10) */}
+        {view === 'req-kanban' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <RequisitionKanban />
           </div>
         )}
 

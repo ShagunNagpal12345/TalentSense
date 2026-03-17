@@ -4,66 +4,10 @@ import {
   Volume2, Maximize2, SkipForward, SkipBack,
   MessageSquare, Send, CheckCircle, X,
   User, Briefcase, Clock, Star, ChevronDown, ChevronUp,
-  Calendar
+  Calendar, Video
 } from 'lucide-react';
 import { useRecruiterStore } from '../../core/stores/recruiterStore';
 import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
-
-// Mock video reviews queue
-const MOCK_VIDEO_QUEUE = [
-  {
-    id: 'mock-cand-1',
-    name: 'Priya Sharma',
-    role: 'Senior BI Analyst',
-    appliedFor: 'Lead BI Partner',
-    matchScore: 94,
-    avatarInitials: 'PS',
-    avatarColor: 'from-violet-500 to-purple-600',
-    videoDuration: '2:34',
-    submittedAgo: '2 days ago',
-    pitchSummary: 'Discusses 7+ years in BI, Power BI expertise, and leadership experience managing analytics teams.',
-    keyHighlights: ['Clear communication', 'Strong technical depth', 'Demonstrated leadership']
-  },
-  {
-    id: 'mock-cand-4',
-    name: 'Arjun Patel',
-    role: 'Senior Frontend Engineer',
-    appliedFor: 'Senior React Developer',
-    matchScore: 96,
-    avatarInitials: 'AP',
-    avatarColor: 'from-emerald-500 to-teal-600',
-    videoDuration: '1:58',
-    submittedAgo: '1 day ago',
-    pitchSummary: 'Walks through his React architecture work at Stripe and his open-source contributions.',
-    keyHighlights: ['High energy', 'Specific examples', 'Portfolio ready']
-  },
-  {
-    id: 'mock-cand-6',
-    name: 'Dr. Rahul Nair',
-    role: 'Principal Data Scientist',
-    appliedFor: 'Data Science Lead',
-    matchScore: 92,
-    avatarInitials: 'RN',
-    avatarColor: 'from-amber-500 to-orange-600',
-    videoDuration: '3:12',
-    submittedAgo: '3 days ago',
-    pitchSummary: 'Explains his ML research background, fraud detection model, and vision for building ML platforms.',
-    keyHighlights: ['Research depth', 'Commercial impact', 'Team leadership']
-  },
-  {
-    id: 'mock-cand-2',
-    name: 'James Okafor',
-    role: 'BI Developer',
-    appliedFor: 'Lead BI Partner',
-    matchScore: 87,
-    avatarInitials: 'JO',
-    avatarColor: 'from-sky-500 to-blue-600',
-    videoDuration: '2:10',
-    submittedAgo: '4 days ago',
-    pitchSummary: 'Showcases his banking-domain Power BI work and explains his approach to data governance.',
-    keyHighlights: ['Banking expertise', 'Clear structure', 'Confident presenter']
-  }
-];
 
 // Mock video player component
 const VideoPlayer = ({ candidate }) => {
@@ -157,9 +101,46 @@ const VideoPlayer = ({ candidate }) => {
   );
 };
 
+// Avatar color palette based on name hash
+const AVATAR_COLORS = [
+  'from-violet-500 to-purple-600',
+  'from-emerald-500 to-teal-600',
+  'from-amber-500 to-orange-600',
+  'from-sky-500 to-blue-600',
+  'from-rose-500 to-pink-600',
+  'from-indigo-500 to-blue-700',
+];
+const getAvatarColor = (name = '') => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+const getInitials = (name = '') => name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
 const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
   const { saveVideoReview, videoReviews } = useRecruiterStore();
-  const [selectedCandidate, setSelectedCandidate] = useState(MOCK_VIDEO_QUEUE[0]);
+  const allCandidates = useRecruitmentStore(state => state.candidates);
+  const jobs = useRecruitmentStore(state => state.jobs);
+
+  // Feature 11: Filter candidates with sentToClient===true OR stage==='Client Review'
+  const videoQueue = allCandidates.filter(c =>
+    c.sentToClient === true || c.status === 'Client Review' || c.stage === 'Client Review'
+  ).map(c => ({
+    id: c.id,
+    name: c.name,
+    role: c.role || c.currentRole || 'Candidate',
+    appliedFor: jobs.find(j => j.id === c.jobId)?.title || 'Open Position',
+    matchScore: c.match || 0,
+    avatarInitials: getInitials(c.name),
+    avatarColor: getAvatarColor(c.name),
+    videoDuration: c.videoDuration || '2:00',
+    submittedAgo: c.sentToClientDate || 'Recently',
+    pitchSummary: c.summary || 'Candidate submitted for client review.',
+    keyHighlights: c.skills?.slice(0, 3) || ['Reviewed by Recruiter'],
+    videoIntroUrl: c.videoIntroUrl || null,
+    noticePeriod: c.noticePeriod,
+    currentCTC: c.currentCTC,
+    expectedCTC: c.expectedCTC,
+    location: c.location,
+  }));
+
+  const [selectedCandidate, setSelectedCandidate] = useState(videoQueue[0] || null);
   const [notes, setNotes] = useState('');
   const [notesSubmitted, setNotesSubmitted] = useState(false);
   const [showHighlights, setShowHighlights] = useState(true);
@@ -169,10 +150,10 @@ const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
   const handleDecision = (decision) => {
     saveVideoReview(selectedCandidate.id, decision, notes);
     // Move to next candidate after decision
-    const currentIndex = MOCK_VIDEO_QUEUE.findIndex(c => c.id === selectedCandidate.id);
-    if (currentIndex < MOCK_VIDEO_QUEUE.length - 1) {
+    const currentIndex = videoQueue.findIndex(c => c.id === selectedCandidate.id);
+    if (currentIndex < videoQueue.length - 1) {
       setTimeout(() => {
-        setSelectedCandidate(MOCK_VIDEO_QUEUE[currentIndex + 1]);
+        setSelectedCandidate(videoQueue[currentIndex + 1]);
         setNotes('');
         setNotesSubmitted(false);
       }, 600);
@@ -211,7 +192,7 @@ const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
                 <Play size={18} className="text-[#0A66C2]" /> Async Video Review
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {MOCK_VIDEO_QUEUE.length} pitches · {Object.keys(videoReviews).length} reviewed
+                {videoQueue.length} pitches · {Object.keys(videoReviews).length} reviewed
               </p>
             </div>
           </div>
@@ -241,7 +222,14 @@ const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Review Queue</p>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {MOCK_VIDEO_QUEUE.map(c => {
+                {videoQueue.length === 0 && (
+                  <div className="p-6 text-center">
+                    <Video className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-500">No candidates submitted for review yet.</p>
+                    <p className="text-xs text-slate-400 mt-1">Recruiter will send candidates here.</p>
+                  </div>
+                )}
+                {videoQueue.map(c => {
                   const review = videoReviews[c.id];
                   const isActive = selectedCandidate?.id === c.id;
                   return (
@@ -283,11 +271,22 @@ const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
           {/* RIGHT: Video + Actions */}
           <div className="lg:col-span-9 space-y-5">
 
+            {/* Empty state when no candidates in queue */}
+            {!selectedCandidate && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-16 text-center">
+                <Video className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">No Video Reviews Pending</h3>
+                <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                  Candidates submitted for client review (with "sentToClient" flag or in "Client Review" stage) will appear here.
+                </p>
+              </div>
+            )}
+
             {/* Video Player */}
-            <VideoPlayer candidate={selectedCandidate} />
+            {selectedCandidate && <VideoPlayer candidate={selectedCandidate} />}
 
             {/* Candidate Info + Highlights */}
-            <div className={`bg-white dark:bg-slate-900 border-2 ${currentReview?.decision === 'shortlist' ? 'border-emerald-400' : currentReview?.decision === 'reject' ? 'border-red-300' : 'border-slate-200 dark:border-slate-800'} rounded-2xl shadow-sm p-5 transition-colors duration-300`}>
+            {selectedCandidate && <div className={`bg-white dark:bg-slate-900 border-2 ${currentReview?.decision === 'shortlist' ? 'border-emerald-400' : currentReview?.decision === 'reject' ? 'border-red-300' : 'border-slate-200 dark:border-slate-800'} rounded-2xl shadow-sm p-5 transition-colors duration-300`}>
               <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-4">
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${selectedCandidate.avatarColor} flex items-center justify-center text-white font-black text-lg shrink-0`}>
                   {selectedCandidate.avatarInitials}
@@ -338,14 +337,15 @@ const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
                 <div className="flex flex-wrap gap-2">
                   {selectedCandidate.keyHighlights.map((h, i) => (
                     <span key={i} className="text-[11px] font-bold bg-[#EDF3F8] dark:bg-slate-800 text-[#0A66C2] dark:text-blue-400 px-3 py-1 rounded-lg border border-blue-100 dark:border-slate-700">
-                      ✓ {h}
+                      {h}
                     </span>
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* QUICK ACTIONS */}
+            {selectedCandidate && <>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => handleDecision('shortlist')}
@@ -405,6 +405,7 @@ const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
                 </button>
               </div>
             </div>
+          </>}
           </div>
         </div>
       </div>

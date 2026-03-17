@@ -216,9 +216,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Briefcase, Users, Search, Bell, Upload,
+  Briefcase, Users, Search, Upload,
   TrendingUp, ChevronRight, ArrowLeft, Info,
-  Sun, Moon, Sparkles, Wand2, Calendar
+  Sun, Moon, Wand2, Calendar, XCircle, RefreshCw,
+  UserCheck, BarChart2, ClipboardCheck
 } from 'lucide-react';
 
 // IMPORT THE STORE
@@ -232,6 +233,7 @@ import RecruiterJobDetailModal from '../components/recruiter/RecruiterJobDetailM
 import MatchmakingDashboard from '../components/recruiter/MatchmakingDashboard';
 import TalentDossier from '../components/recruiter/TalentDossier';
 import InterviewScheduler from '../components/shared/InterviewScheduler';
+import NotificationBell from '../components/shared/NotificationBell';
 
 const RecruiterDashboard = () => {
   // --- STATE ---
@@ -251,7 +253,21 @@ const RecruiterDashboard = () => {
   const [isDark, setIsDark] = useState(false);
 
   // DATA
-  const assignedJobs = useRecruitmentStore((state) => state.jobs);
+  const allJobs = useRecruitmentStore((state) => state.jobs);
+  const candidates = useRecruitmentStore((state) => state.candidates);
+  const closeJob = useRecruitmentStore((state) => state.closeJob);
+  const reopenJob = useRecruitmentStore((state) => state.reopenJob);
+
+  // Feature 8: Filter jobs by active tab
+  const assignedJobs = allJobs.filter(j =>
+    activeTab === 'active' ? (j.status !== 'Closed') : (j.status === 'Closed')
+  );
+
+  // Feature 15: Analytics metrics
+  const openRequisitions = allJobs.filter(j => j.status !== 'Closed').length;
+  const totalCandidates = candidates.length;
+  const scheduledInterviews = candidates.filter(c => c.interviewScheduled).length;
+  const placements = candidates.filter(c => c.status === 'Offer' || c.status === 'Placed').length;
 
   // --- THEME EFFECT ---
   useEffect(() => {
@@ -344,10 +360,7 @@ const RecruiterDashboard = () => {
                 {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
 
-              <button className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-600 dark:text-slate-400">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
-              </button>
+              <NotificationBell portal="recruiter" />
 
               {/* Profile Avatar */}
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold text-sm shadow-sm cursor-pointer hover:shadow-md transition">
@@ -406,30 +419,96 @@ const RecruiterDashboard = () => {
             {/* VIEW: DASHBOARD (Job List) */}
             {view === 'dashboard' && (
               <div className="space-y-6 animate-in fade-in duration-300">
+
+                {/* Feature 15: Analytics Metrics Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Total Candidates", value: totalCandidates, icon: Users, color: "text-[#0A66C2]", bg: "bg-blue-50 dark:bg-blue-900/20" },
+                    { label: "Open Requisitions", value: openRequisitions, icon: Briefcase, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+                    { label: "Interviews Scheduled", value: scheduledInterviews, icon: Calendar, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20" },
+                    { label: "Placements", value: placements, icon: UserCheck, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20" },
+                  ].map(({ label, value, icon: Icon, color, bg }) => (
+                    <div key={label} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                        <Icon className={`w-5 h-5 ${color}`} />
+                      </div>
+                      <div>
+                        <div className={`text-2xl font-black ${color}`}>{value}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">{label}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <h2 className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-                    Assigned Requisitions 
+                    Assigned Requisitions
                     <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-full text-xs">{assignedJobs.length}</span>
                   </h2>
                   <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                    <button onClick={() => setActiveTab('active')} className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'active' ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Active</button>
-                    <button onClick={() => setActiveTab('closed')} className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'closed' ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Closed</button>
+                    <button onClick={() => setActiveTab('active')} className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'active' ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                      Active <span className="ml-1 text-[10px]">({allJobs.filter(j => j.status !== 'Closed').length})</span>
+                    </button>
+                    <button onClick={() => setActiveTab('closed')} className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'closed' ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                      Closed <span className="ml-1 text-[10px]">({allJobs.filter(j => j.status === 'Closed').length})</span>
+                    </button>
                   </div>
                 </div>
 
                 <div className="grid gap-4">
                   {assignedJobs.map((job) => (
-                    <div key={job.id} onClick={() => handleOpenPipeline(job)} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group cursor-pointer relative">
-                      
-                      <button onClick={(e) => handleViewJobDetails(e, job)} className="absolute top-6 right-6 p-2 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-colors z-10" title="View JD & Strategy">
-                        <Info className="w-5 h-5"/>
-                      </button>
+                    <div
+                      key={job.id}
+                      onClick={() => activeTab === 'active' && handleOpenPipeline(job)}
+                      className={`bg-white dark:bg-slate-900 p-6 rounded-2xl border shadow-sm transition-all group relative ${
+                        activeTab === 'active'
+                          ? 'border-slate-200 dark:border-slate-800 hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 cursor-pointer'
+                          : 'border-slate-200 dark:border-slate-800 opacity-80'
+                      }`}
+                    >
+                      {/* Action buttons top right */}
+                      <div className="absolute top-5 right-5 flex items-center gap-2 z-10" onClick={e => e.stopPropagation()}>
+                        {activeTab === 'active' ? (
+                          <>
+                            <button
+                              onClick={(e) => handleViewJobDetails(e, job)}
+                              className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-colors"
+                              title="View JD & Strategy"
+                            >
+                              <Info className="w-4 h-4"/>
+                            </button>
+                            <button
+                              onClick={() => { if(window.confirm(`Close "${job.title}"? This will archive it.`)) closeJob(job.id); }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-xl text-xs font-bold hover:bg-red-100 transition"
+                              title="Mark as Closed"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Close
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => reopenJob(job.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-xs font-bold hover:bg-emerald-100 transition"
+                            title="Reopen Position"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> Reopen
+                          </button>
+                        )}
+                      </div>
 
-                      <div className="flex justify-between items-start pr-12">
+                      <div className="flex justify-between items-start pr-28">
                         <div>
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <h3 className="font-extrabold text-xl text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{job.title}</h3>
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border ${job.urgency === 'High' || job.urgency === 'Critical' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/50'}`}>{job.urgency || "High"} Priority</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border ${
+                              activeTab === 'closed'
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                : job.urgency === 'High' || job.urgency === 'Critical'
+                                ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50'
+                                : 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/50'
+                            }`}>
+                              {activeTab === 'closed' ? 'Closed' : `${job.urgency || "High"} Priority`}
+                            </span>
                           </div>
                           <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
                             <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4 text-emerald-500" /> {job.client}</span>
@@ -437,22 +516,38 @@ const RecruiterDashboard = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
                         <div className="flex gap-6">
-                          <div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Candidates</span><span className="text-sm font-bold text-slate-700 dark:text-slate-200">{job.candidateCount || 0}</span></div>
-                          <div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status</span><span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{job.stage || "Active"}</span></div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Candidates</span>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{job.candidateCount || 0}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status</span>
+                            <span className={`text-sm font-bold ${activeTab === 'closed' ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                              {activeTab === 'closed' ? 'Closed' : (job.stage || "Active")}
+                            </span>
+                          </div>
                         </div>
-                        <button className="text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1">Manage Pipeline <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></button>
+                        {activeTab === 'active' && (
+                          <button className="text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1">
+                            Manage Pipeline <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
-                  
+
                   {assignedJobs.length === 0 && (
                     <div className="text-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
                       <Briefcase className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3"/>
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">No active requisitions found.</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Wait for a Client to post a new position.</p>
+                      <p className="text-slate-600 dark:text-slate-400 font-medium">
+                        {activeTab === 'active' ? 'No active requisitions found.' : 'No closed requisitions.'}
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                        {activeTab === 'active' ? 'Wait for a Client to post a new position.' : 'Closed jobs will appear here.'}
+                      </p>
                     </div>
                   )}
                 </div>

@@ -1,63 +1,63 @@
 import React, { useState } from 'react';
-import { 
-  X, FileText, Mail, Copy, CheckCircle, ExternalLink, 
-  User, BrainCircuit, Briefcase, Loader2, PlayCircle, ThumbsUp, ThumbsDown
+import {
+  X, FileText, Mail, Copy, CheckCircle, ExternalLink,
+  User, BrainCircuit, Briefcase, Loader2, PlayCircle, ThumbsUp, ThumbsDown,
+  Zap, BookOpen, Target, XCircle, Star
 } from 'lucide-react';
 import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
 import { generateClientEmail } from '../../core/services/emailGroqService';
-// 👇 FIX: Import YOUR dedicated evaluateCandidate function
-import { evaluateCandidate } from '../../core/services/recruiterGroqService'; 
+import { deepResumeAnalysis } from '../../core/services/groqService';
 
-const CandidateDetailModal = ({ candidate, job, onClose }) => {
+const CandidateDetailModal = ({ candidate: candidateProp, job, onClose }) => {
   const moveCandidate = useRecruitmentStore(state => state.moveCandidate);
-  const updateCandidate = useRecruitmentStore(state => state.updateCandidate); 
+  const updateCandidate = useRecruitmentStore(state => state.updateCandidate);
+  // FIX: Read candidate live from store so UI reflects updates without reopening
+  const candidateFromStore = useRecruitmentStore(state =>
+    state.candidates.find(c => c.id === candidateProp?.id)
+  );
+  const candidate = candidateFromStore || candidateProp;
 
   const [activeTab, setActiveTab] = useState('analysis'); 
   const [emailData, setEmailData] = useState({ subject: "", body: "" });
   const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
   
-  const [hasRunAnalysis, setHasRunAnalysis] = useState(false);
+  const [hasRunAnalysis, setHasRunAnalysis] = useState(
+    // Pre-populate if candidate already has aiAnalysis stored
+    !!(candidateProp?.aiAnalysis)
+  );
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [localDeepAnalysis, setLocalDeepAnalysis] = useState(candidateProp?.aiAnalysis || null);
 
-  // 👇 FIX: Use your dedicated Recruiter AI Service
   const handleRunAnalysis = async () => {
     setIsAnalyzing(true);
     try {
-      // Calls your highly accurate evaluateCandidate function
-      const analysisResult = await evaluateCandidate(
-        candidate.resumeText || "Candidate applied manually without raw resume text.", 
-        job?.fullText || "Generic Role"
+      const result = await deepResumeAnalysis(
+        candidate.resumeText || "Candidate applied manually without raw resume text.",
+        job?.fullText || "Generic Software Role"
       );
 
-      if (analysisResult) {
-        // Save the rich AI results to the Zustand store
+      if (result) {
+        // Persist deep analysis + update logistics/match on the candidate record in store
         updateCandidate(candidate.id, {
-          match: analysisResult.match || candidate.match,
-          summary: analysisResult.summary || candidate.summary,
-          skills: analysisResult.skills || candidate.skills,
-          // We can also merge AI logistics if the candidate left them blank in the form
-          noticePeriod: candidate.noticePeriod || analysisResult.logistics?.noticePeriod,
-          currentCTC: candidate.currentCTC || analysisResult.logistics?.currentCTC,
-          expectedCTC: candidate.expectedCTC || analysisResult.logistics?.expectedCTC,
-          
-          // 👇 FIX: Ensure we capture ALL the profile data extracted by the AI
-          currentOrg: analysisResult.profile?.currentOrg || candidate.currentOrg || "Not specified",
-          education: analysisResult.profile?.education || candidate.education || "Not specified",
-          totalExp: analysisResult.profile?.totalExp || candidate.totalExp || "Not specified",
-          location: candidate.location || analysisResult.profile?.location || "Not specified",
-          interviewQuestions: analysisResult.interviewQuestions || candidate.interviewQuestions || []
+          aiAnalysis: result,
+          match: result.matchScore || candidate.match,
+          noticePeriod: candidate.noticePeriod !== 'N/A' ? candidate.noticePeriod : (result.noticePeriod || candidate.noticePeriod),
+          skills: result.basicInfo?.skills?.length ? result.basicInfo.skills : (candidate.skills || []),
         });
+        setLocalDeepAnalysis(result);
       }
 
       setHasRunAnalysis(true);
     } catch (error) {
       console.error("AI Analysis failed:", error);
-      alert("AI Analysis encountered an error.");
-      setHasRunAnalysis(true); 
+      setHasRunAnalysis(true);
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  // Merge: prefer freshly loaded from store, fallback to local state
+  const deepAnalysis = candidate?.aiAnalysis || localDeepAnalysis;
 
   const handleApprove = () => {
     moveCandidate(candidate.id, 'Client Review');
@@ -172,37 +172,116 @@ const CandidateDetailModal = ({ candidate, job, onClose }) => {
                   </div>
                ) : (
                  <>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 mb-6">
-                     <div className="space-y-6">
-                       <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                          <h3 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wide"><User className="w-4 h-4 text-emerald-500"/> AI Summary</h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{candidate.summary || "No summary available."}</p>
-                       </div>
-                       
-                       <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                          <h3 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wide"><Briefcase className="w-4 h-4 text-emerald-500"/> Extracted Skills</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {candidate.skills?.map((s, i) => (
-                              <span key={i} className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded border border-emerald-200 dark:border-emerald-800/50">{s}</span>
-                            ))}
-                          </div>
-                       </div>
-                     </div>
+                   <div className="space-y-4 flex-1 mb-6">
 
-                     <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-fit">
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4 text-sm uppercase tracking-wide flex items-center gap-2"><FileText className="w-4 h-4 text-emerald-500"/> Candidate Logistics</h3>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Notice Period</span><span className="font-medium text-slate-800 dark:text-white">{candidate.noticePeriod || "N/A"}</span></div>
-                          <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Current CTC</span><span className="font-medium text-slate-800 dark:text-white">{candidate.currentCTC || "N/A"}</span></div>
-                          <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Expected CTC</span><span className="font-medium text-slate-800 dark:text-white">{candidate.expectedCTC || "N/A"}</span></div>
-                          <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Location</span><span className="font-medium text-slate-800 dark:text-white">{candidate.location || "N/A"}</span></div>
-                          <div className="flex justify-between py-2"><span className="text-slate-500 dark:text-slate-400">Work Pref.</span><span className="font-medium text-slate-800 dark:text-white">{candidate.workPreference || "N/A"}</span></div>
-                        </div>
-                        {candidate.resumeUrl && (
-                          <a href={candidate.resumeUrl} target="_blank" rel="noreferrer" className="mt-6 block w-full text-center py-2.5 border-2 border-slate-200 dark:border-slate-800 rounded-lg font-bold text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-500 transition text-sm flex items-center justify-center gap-2">
-                            <FileText className="w-4 h-4"/> View Original Resume PDF
-                          </a>
-                        )}
+                     {/* AI Decision Banner */}
+                     {deepAnalysis?.aiDecision && (
+                       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border font-bold text-sm ${
+                         deepAnalysis.aiDecision.toLowerCase().includes('strong') || deepAnalysis.aiDecision.toLowerCase().includes('recommend')
+                           ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400'
+                           : deepAnalysis.aiDecision.toLowerCase().includes('good') || deepAnalysis.aiDecision.toLowerCase().includes('consider')
+                           ? 'text-[#0A66C2] bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                           : 'text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                       }`}>
+                         <Zap className="w-4 h-4 shrink-0" />
+                         <span>{deepAnalysis.aiDecision}</span>
+                       </div>
+                     )}
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       {/* Left column */}
+                       <div className="space-y-4">
+                         {/* Match explanation or summary */}
+                         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                           <h3 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                             <User className="w-4 h-4 text-emerald-500"/> {deepAnalysis?.matchExplanation ? 'Match Analysis' : 'AI Summary'}
+                           </h3>
+                           <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                             {deepAnalysis?.matchExplanation || candidate.summary || "No summary available."}
+                           </p>
+                         </div>
+
+                         {/* Skills comparison */}
+                         {deepAnalysis?.jdComparison ? (
+                           <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                             <h3 className="font-bold text-slate-800 dark:text-white text-sm uppercase tracking-wide flex items-center gap-2">
+                               <Target className="w-4 h-4 text-emerald-500"/> JD Skill Comparison
+                             </h3>
+                             {/* Has */}
+                             {(deepAnalysis.jdComparison.candidateHas || []).length > 0 && (
+                               <div>
+                                 <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Candidate Has</p>
+                                 <div className="flex flex-wrap gap-1.5">
+                                   {deepAnalysis.jdComparison.candidateHas.map((s, i) => (
+                                     <span key={i} className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold rounded-full border border-emerald-200 dark:border-emerald-800/50">{s}</span>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
+                             {/* Missing */}
+                             {(deepAnalysis.jdComparison.missingSkills || []).length > 0 && (
+                               <div>
+                                 <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1.5">Missing Skills</p>
+                                 <div className="flex flex-wrap gap-1.5">
+                                   {deepAnalysis.jdComparison.missingSkills.map((s, i) => (
+                                     <span key={i} className="px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[11px] font-bold rounded-full border border-red-200 dark:border-red-800/50">{s}</span>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         ) : (
+                           <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                             <h3 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                               <Briefcase className="w-4 h-4 text-emerald-500"/> Extracted Skills
+                             </h3>
+                             <div className="flex flex-wrap gap-2">
+                               {candidate.skills?.map((s, i) => (
+                                 <span key={i} className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded border border-emerald-200 dark:border-emerald-800/50">{s}</span>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                       </div>
+
+                       {/* Right column */}
+                       <div className="space-y-4">
+                         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                           <h3 className="font-bold text-slate-800 dark:text-white mb-4 text-sm uppercase tracking-wide flex items-center gap-2">
+                             <FileText className="w-4 h-4 text-emerald-500"/> Candidate Logistics
+                           </h3>
+                           <div className="space-y-3 text-sm">
+                             <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Notice Period</span><span className="font-medium text-slate-800 dark:text-white">{candidate.noticePeriod || "N/A"}</span></div>
+                             <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Current CTC</span><span className="font-medium text-slate-800 dark:text-white">{candidate.currentCTC || "N/A"}</span></div>
+                             <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Expected CTC</span><span className="font-medium text-slate-800 dark:text-white">{candidate.expectedCTC || "N/A"}</span></div>
+                             <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800"><span className="text-slate-500 dark:text-slate-400">Location</span><span className="font-medium text-slate-800 dark:text-white">{candidate.location || "N/A"}</span></div>
+                             <div className="flex justify-between py-2"><span className="text-slate-500 dark:text-slate-400">Work Pref.</span><span className="font-medium text-slate-800 dark:text-white">{candidate.workPreference || "N/A"}</span></div>
+                           </div>
+                           {candidate.resumeUrl && (
+                             <a href={candidate.resumeUrl} target="_blank" rel="noreferrer" className="mt-6 block w-full text-center py-2.5 border-2 border-slate-200 dark:border-slate-800 rounded-lg font-bold text-slate-600 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-500 transition text-sm flex items-center justify-center gap-2">
+                               <FileText className="w-4 h-4"/> View Original Resume PDF
+                             </a>
+                           )}
+                         </div>
+
+                         {/* Education + Experience Analysis */}
+                         {deepAnalysis && (
+                           <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                             {deepAnalysis.educationAnalysis && (
+                               <div>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><BookOpen className="w-3 h-3" /> Education</p>
+                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{deepAnalysis.educationAnalysis}</p>
+                               </div>
+                             )}
+                             {deepAnalysis.experienceAnalysis && (
+                               <div>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Briefcase className="w-3 h-3" /> Experience</p>
+                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{deepAnalysis.experienceAnalysis}</p>
+                               </div>
+                             )}
+                           </div>
+                         )}
+                       </div>
                      </div>
                    </div>
 
