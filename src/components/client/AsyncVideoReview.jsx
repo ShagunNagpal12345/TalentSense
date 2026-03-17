@@ -1,0 +1,415 @@
+import React, { useState } from 'react';
+import {
+  ArrowLeft, Play, Pause, ThumbsUp, ThumbsDown,
+  Volume2, Maximize2, SkipForward, SkipBack,
+  MessageSquare, Send, CheckCircle, X,
+  User, Briefcase, Clock, Star, ChevronDown, ChevronUp,
+  Calendar
+} from 'lucide-react';
+import { useRecruiterStore } from '../../core/stores/recruiterStore';
+import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
+
+// Mock video reviews queue
+const MOCK_VIDEO_QUEUE = [
+  {
+    id: 'mock-cand-1',
+    name: 'Priya Sharma',
+    role: 'Senior BI Analyst',
+    appliedFor: 'Lead BI Partner',
+    matchScore: 94,
+    avatarInitials: 'PS',
+    avatarColor: 'from-violet-500 to-purple-600',
+    videoDuration: '2:34',
+    submittedAgo: '2 days ago',
+    pitchSummary: 'Discusses 7+ years in BI, Power BI expertise, and leadership experience managing analytics teams.',
+    keyHighlights: ['Clear communication', 'Strong technical depth', 'Demonstrated leadership']
+  },
+  {
+    id: 'mock-cand-4',
+    name: 'Arjun Patel',
+    role: 'Senior Frontend Engineer',
+    appliedFor: 'Senior React Developer',
+    matchScore: 96,
+    avatarInitials: 'AP',
+    avatarColor: 'from-emerald-500 to-teal-600',
+    videoDuration: '1:58',
+    submittedAgo: '1 day ago',
+    pitchSummary: 'Walks through his React architecture work at Stripe and his open-source contributions.',
+    keyHighlights: ['High energy', 'Specific examples', 'Portfolio ready']
+  },
+  {
+    id: 'mock-cand-6',
+    name: 'Dr. Rahul Nair',
+    role: 'Principal Data Scientist',
+    appliedFor: 'Data Science Lead',
+    matchScore: 92,
+    avatarInitials: 'RN',
+    avatarColor: 'from-amber-500 to-orange-600',
+    videoDuration: '3:12',
+    submittedAgo: '3 days ago',
+    pitchSummary: 'Explains his ML research background, fraud detection model, and vision for building ML platforms.',
+    keyHighlights: ['Research depth', 'Commercial impact', 'Team leadership']
+  },
+  {
+    id: 'mock-cand-2',
+    name: 'James Okafor',
+    role: 'BI Developer',
+    appliedFor: 'Lead BI Partner',
+    matchScore: 87,
+    avatarInitials: 'JO',
+    avatarColor: 'from-sky-500 to-blue-600',
+    videoDuration: '2:10',
+    submittedAgo: '4 days ago',
+    pitchSummary: 'Showcases his banking-domain Power BI work and explains his approach to data governance.',
+    keyHighlights: ['Banking expertise', 'Clear structure', 'Confident presenter']
+  }
+];
+
+// Mock video player component
+const VideoPlayer = ({ candidate }) => {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(22);
+
+  return (
+    <div className="rounded-2xl overflow-hidden bg-slate-950 shadow-2xl">
+      {/* Video canvas area */}
+      <div className="aspect-video bg-gradient-to-br from-slate-800 via-slate-900 to-black relative flex items-center justify-center group cursor-pointer"
+        onClick={() => setPlaying(!playing)}>
+
+        {/* Subtle grid overlay for tech look */}
+        <div className="absolute inset-0 opacity-5"
+          style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}
+        />
+
+        {/* Candidate name badge */}
+        <div className="absolute top-4 left-4 flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${candidate.avatarColor} flex items-center justify-center text-white text-xs font-black shadow-lg`}>
+            {candidate.avatarInitials}
+          </div>
+          <div className="bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1">
+            <p className="text-white text-xs font-bold leading-tight">{candidate.name}</p>
+            <p className="text-slate-400 text-[9px]">{candidate.role}</p>
+          </div>
+        </div>
+
+        {/* Recording indicator */}
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-600 rounded-full px-2.5 py-1">
+          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+          <span className="text-white text-[10px] font-bold uppercase tracking-wider">REC</span>
+        </div>
+
+        {/* Center play button */}
+        <div className={`w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center transition-all z-10 ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+          {playing
+            ? <Pause className="w-7 h-7 text-white fill-white" />
+            : <Play className="w-7 h-7 text-white fill-white ml-1" />
+          }
+        </div>
+
+        {/* Time overlay */}
+        <div className="absolute bottom-3 right-4 bg-black/60 rounded px-2 py-0.5">
+          <span className="text-white text-[11px] font-mono">{candidate.videoDuration}</span>
+        </div>
+      </div>
+
+      {/* Progress + Controls */}
+      <div className="bg-slate-900 px-4 py-3">
+        {/* Progress bar */}
+        <div
+          className="w-full h-1.5 bg-slate-700 rounded-full mb-3 cursor-pointer overflow-hidden"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setProgress(Math.round(((e.clientX - rect.left) / rect.width) * 100));
+          }}
+        >
+          <div
+            className="h-full bg-[#0A66C2] rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Controls row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button className="text-slate-400 hover:text-white transition-colors">
+              <SkipBack size={16} />
+            </button>
+            <button
+              onClick={() => setPlaying(!playing)}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            >
+              {playing ? <Pause size={14} /> : <Play size={14} className="fill-white ml-0.5" />}
+            </button>
+            <button className="text-slate-400 hover:text-white transition-colors">
+              <SkipForward size={16} />
+            </button>
+            <span className="text-slate-400 text-[11px] font-mono ml-1">
+              {Math.floor(progress * 154 / 100 / 60)}:{String(Math.floor(progress * 154 / 100 % 60)).padStart(2, '0')} / {candidate.videoDuration}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Volume2 size={16} className="text-slate-400 hover:text-white transition-colors cursor-pointer" />
+            <Maximize2 size={16} className="text-slate-400 hover:text-white transition-colors cursor-pointer" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AsyncVideoReview = ({ onBack, onScheduleInterview }) => {
+  const { saveVideoReview, videoReviews } = useRecruiterStore();
+  const [selectedCandidate, setSelectedCandidate] = useState(MOCK_VIDEO_QUEUE[0]);
+  const [notes, setNotes] = useState('');
+  const [notesSubmitted, setNotesSubmitted] = useState(false);
+  const [showHighlights, setShowHighlights] = useState(true);
+
+  const currentReview = videoReviews[selectedCandidate?.id];
+
+  const handleDecision = (decision) => {
+    saveVideoReview(selectedCandidate.id, decision, notes);
+    // Move to next candidate after decision
+    const currentIndex = MOCK_VIDEO_QUEUE.findIndex(c => c.id === selectedCandidate.id);
+    if (currentIndex < MOCK_VIDEO_QUEUE.length - 1) {
+      setTimeout(() => {
+        setSelectedCandidate(MOCK_VIDEO_QUEUE[currentIndex + 1]);
+        setNotes('');
+        setNotesSubmitted(false);
+      }, 600);
+    }
+  };
+
+  const handleSubmitNotes = () => {
+    if (!notes.trim()) return;
+    saveVideoReview(selectedCandidate.id, currentReview?.decision || null, notes);
+    setNotesSubmitted(true);
+    setTimeout(() => setNotesSubmitted(false), 2500);
+  };
+
+  const getDecisionStyle = (candidateId) => {
+    const r = videoReviews[candidateId];
+    if (!r) return null;
+    if (r.decision === 'shortlist') return 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20';
+    if (r.decision === 'reject') return 'border-red-300 bg-red-50 dark:bg-red-900/20';
+    return null;
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F3F2EF] dark:bg-slate-950 pb-20 animate-in fade-in duration-400">
+
+      {/* Header */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition text-slate-500 dark:text-slate-400">
+                <ArrowLeft size={18} />
+              </button>
+            )}
+            <div>
+              <h1 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <Play size={18} className="text-[#0A66C2]" /> Async Video Review
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {MOCK_VIDEO_QUEUE.length} pitches · {Object.keys(videoReviews).length} reviewed
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 text-xs font-bold">
+              <span className="flex items-center gap-1 text-emerald-600">
+                <ThumbsUp size={12} fill="currentColor" />
+                {Object.values(videoReviews).filter(r => r.decision === 'shortlist').length} Shortlisted
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="flex items-center gap-1 text-red-500">
+                <ThumbsDown size={12} fill="currentColor" />
+                {Object.values(videoReviews).filter(r => r.decision === 'reject').length} Rejected
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* LEFT: Queue */}
+          <div className="lg:col-span-3">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Review Queue</p>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {MOCK_VIDEO_QUEUE.map(c => {
+                  const review = videoReviews[c.id];
+                  const isActive = selectedCandidate?.id === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => { setSelectedCandidate(c); setNotes(review?.notes || ''); setNotesSubmitted(false); }}
+                      className={`w-full text-left px-4 py-3.5 transition-colors ${
+                        isActive
+                          ? 'bg-[#EDF3F8] dark:bg-slate-800'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.avatarColor} flex items-center justify-center text-white text-sm font-black shrink-0`}>
+                          {c.avatarInitials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{c.name}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">{c.appliedFor}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold text-[#0A66C2]">{c.matchScore}%</span>
+                            <span className="text-[10px] text-slate-400 font-medium flex items-center gap-0.5">
+                              <Clock size={9} />{c.videoDuration}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Decision badge */}
+                        {review?.decision === 'shortlist' && <ThumbsUp size={14} className="text-emerald-500 fill-emerald-500 shrink-0 mt-0.5" />}
+                        {review?.decision === 'reject' && <ThumbsDown size={14} className="text-red-400 fill-red-400 shrink-0 mt-0.5" />}
+                        {isActive && !review && <div className="w-1.5 h-1.5 bg-[#0A66C2] rounded-full mt-1.5 shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: Video + Actions */}
+          <div className="lg:col-span-9 space-y-5">
+
+            {/* Video Player */}
+            <VideoPlayer candidate={selectedCandidate} />
+
+            {/* Candidate Info + Highlights */}
+            <div className={`bg-white dark:bg-slate-900 border-2 ${currentReview?.decision === 'shortlist' ? 'border-emerald-400' : currentReview?.decision === 'reject' ? 'border-red-300' : 'border-slate-200 dark:border-slate-800'} rounded-2xl shadow-sm p-5 transition-colors duration-300`}>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-4">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${selectedCandidate.avatarColor} flex items-center justify-center text-white font-black text-lg shrink-0`}>
+                  {selectedCandidate.avatarInitials}
+                </div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                    <h2 className="font-extrabold text-lg text-slate-900 dark:text-white">{selectedCandidate.name}</h2>
+                    <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                      <Star size={9} fill="currentColor" /> {selectedCandidate.matchScore}% Match
+                    </span>
+                    {currentReview?.decision === 'shortlist' && (
+                      <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                        <CheckCircle size={9} /> Shortlisted
+                      </span>
+                    )}
+                    {currentReview?.decision === 'reject' && (
+                      <span className="bg-red-100 text-red-700 text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                        <X size={9} /> Rejected
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">{selectedCandidate.role} · Applied for <span className="font-bold text-slate-900 dark:text-white">{selectedCandidate.appliedFor}</span></p>
+                </div>
+                {onScheduleInterview && (
+                  <button
+                    onClick={() => onScheduleInterview(selectedCandidate)}
+                    className="flex items-center gap-2 bg-[#EDF3F8] dark:bg-slate-800 hover:bg-[#0A66C2] hover:text-white text-[#0A66C2] dark:text-blue-400 px-4 py-2 rounded-xl font-bold text-xs transition-all border border-blue-100 dark:border-slate-700 shrink-0"
+                  >
+                    <Calendar size={13} /> Schedule
+                  </button>
+                )}
+              </div>
+
+              {/* Pitch summary */}
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+                {selectedCandidate.pitchSummary}
+              </p>
+
+              {/* Highlights collapsible */}
+              <button
+                onClick={() => setShowHighlights(!showHighlights)}
+                className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors mb-2"
+              >
+                {showHighlights ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                AI Highlights
+              </button>
+              {showHighlights && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedCandidate.keyHighlights.map((h, i) => (
+                    <span key={i} className="text-[11px] font-bold bg-[#EDF3F8] dark:bg-slate-800 text-[#0A66C2] dark:text-blue-400 px-3 py-1 rounded-lg border border-blue-100 dark:border-slate-700">
+                      ✓ {h}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* QUICK ACTIONS */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleDecision('shortlist')}
+                className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all active:scale-[0.97] shadow-sm ${
+                  currentReview?.decision === 'shortlist'
+                    ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900/30'
+                    : 'bg-white dark:bg-slate-900 border-2 border-emerald-400 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/10'
+                }`}
+              >
+                <ThumbsUp size={18} className={currentReview?.decision === 'shortlist' ? 'fill-white' : ''} />
+                {currentReview?.decision === 'shortlist' ? 'Shortlisted' : 'Shortlist'}
+              </button>
+              <button
+                onClick={() => handleDecision('reject')}
+                className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all active:scale-[0.97] shadow-sm ${
+                  currentReview?.decision === 'reject'
+                    ? 'bg-red-500 text-white shadow-red-200 dark:shadow-red-900/30'
+                    : 'bg-white dark:bg-slate-900 border-2 border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                }`}
+              >
+                <ThumbsDown size={18} className={currentReview?.decision === 'reject' ? 'fill-white' : ''} />
+                {currentReview?.decision === 'reject' ? 'Rejected' : 'Reject'}
+              </button>
+            </div>
+
+            {/* PRIVATE NOTES */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-5">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <MessageSquare size={14} className="text-[#0A66C2]" /> Private Notes for Recruiter
+              </h3>
+              <div className="relative">
+                <textarea
+                  value={notes}
+                  onChange={(e) => { setNotes(e.target.value); setNotesSubmitted(false); }}
+                  placeholder="Add your private notes here (only visible to the recruiter)..."
+                  rows={3}
+                  className="w-full text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:border-[#0A66C2] resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                />
+                {currentReview?.notes && notes === currentReview.notes && (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 italic">Saved note</p>
+                )}
+              </div>
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleSubmitNotes}
+                  disabled={!notes.trim()}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                    notes.trim()
+                      ? 'bg-[#0A66C2] hover:bg-[#004182] text-white active:scale-95'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  {notesSubmitted
+                    ? <><CheckCircle size={14} /> Saved!</>
+                    : <><Send size={14} /> Save Note</>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AsyncVideoReview;

@@ -215,10 +215,10 @@
 // export default RecruiterDashboard;
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Briefcase, Users, Search, Bell, Upload, 
+import {
+  Briefcase, Users, Search, Bell, Upload,
   TrendingUp, ChevronRight, ArrowLeft, Info,
-  Sun, Moon, Sparkles, Wand2
+  Sun, Moon, Sparkles, Wand2, Calendar
 } from 'lucide-react';
 
 // IMPORT THE STORE
@@ -229,19 +229,22 @@ import RecruiterKanban from '../components/recruiter/RecruiterKanban';
 import ResumeParser from '../components/recruiter/ResumeParser';
 import CandidateDatabase from '../components/recruiter/CandidateDatabase';
 import RecruiterJobDetailModal from '../components/recruiter/RecruiterJobDetailModal';
-import MatchmakingDashboard from '../components/recruiter/MatchmakingDashboard'; // 👈 NEW IMPORT
+import MatchmakingDashboard from '../components/recruiter/MatchmakingDashboard';
+import TalentDossier from '../components/recruiter/TalentDossier';
+import InterviewScheduler from '../components/shared/InterviewScheduler';
 
 const RecruiterDashboard = () => {
   // --- STATE ---
-  // Added 'matchmaker' to view options
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'kanban' | 'parser' | 'candidates' | 'matchmaker'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'kanban' | 'parser' | 'candidates' | 'matchmaker' | 'dossier' | 'scheduler'
   const [selectedJob, setSelectedJob] = useState(null);
-  
+  const [dossierCandidate, setDossierCandidate] = useState(null);
+  const [schedulerCandidate, setSchedulerCandidate] = useState(null);
+
   // Modal States
   const [showJobDetails, setShowJobDetails] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState(null); 
-  
-  const [activeTab, setActiveTab] = useState('active'); 
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+
+  const [activeTab, setActiveTab] = useState('active');
   const [parserTargetJobId, setParserTargetJobId] = useState(null);
 
   // Theme State
@@ -384,6 +387,9 @@ const RecruiterDashboard = () => {
               <button onClick={() => setView('candidates')} className={getNavClass('candidates')}>
                 <Users className="w-4 h-4" /> Candidate Database
               </button>
+              <button onClick={() => { setSchedulerCandidate(null); setView('scheduler'); }} className={getNavClass('scheduler')}>
+                <Calendar className="w-4 h-4" /> Interview Scheduler
+              </button>
             </nav>
 
             <div onClick={() => handleOpenParser()} className="bg-emerald-50 dark:bg-emerald-900/10 border-2 border-dashed border-emerald-200 dark:border-emerald-800/50 rounded-2xl p-6 text-center hover:border-emerald-400 dark:hover:border-emerald-500/50 transition cursor-pointer group">
@@ -453,14 +459,38 @@ const RecruiterDashboard = () => {
               </div>
             )}
 
-            {/* 👇 VIEW: AI MATCHMAKER */}
+            {/* VIEW: AI MATCHMAKER */}
             {view === 'matchmaker' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <MatchmakingDashboard onViewDossier={(candidate) => {
-                  // We will build the Dossier Viewer component next!
-                  console.log("View Dossier for:", candidate);
-                  alert(`Dossier Viewer for ${candidate.name} coming next!`);
+                  setDossierCandidate(candidate);
+                  setView('dossier');
                 }} />
+              </div>
+            )}
+
+            {/* VIEW: TALENT DOSSIER */}
+            {view === 'dossier' && dossierCandidate && (
+              <div className="animate-in fade-in slide-in-from-right duration-500">
+                <TalentDossier
+                  candidate={dossierCandidate}
+                  onBack={() => setView('matchmaker')}
+                  onScheduleInterview={(candidate) => {
+                    setSchedulerCandidate(candidate);
+                    setView('scheduler');
+                  }}
+                />
+              </div>
+            )}
+
+            {/* VIEW: INTERVIEW SCHEDULER */}
+            {view === 'scheduler' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <InterviewScheduler
+                  candidate={schedulerCandidate}
+                  onBack={() => setView(dossierCandidate ? 'dossier' : 'matchmaker')}
+                  onConfirm={() => setView(dossierCandidate ? 'dossier' : 'matchmaker')}
+                />
               </div>
             )}
 

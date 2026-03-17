@@ -323,9 +323,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ArrowLeft, LayoutGrid, ChevronRight, 
-  Bell, Sun, Moon, Plus, Sparkles 
+import {
+  ArrowLeft, LayoutGrid, ChevronRight,
+  Bell, Sun, Moon, Plus, Sparkles, Play, Calendar
 } from 'lucide-react';
 
 // IMPORT THE STORE
@@ -336,13 +336,16 @@ import JDUpload from '../components/client/JDUpload';
 import JDAnalysis from '../components/client/JDAnalysis';
 import DashboardOverview from '../components/client/DashboardOverview';
 import JobDetailView from '../components/client/JobDetailView';
+import AsyncVideoReview from '../components/client/AsyncVideoReview';
+import InterviewScheduler from '../components/shared/InterviewScheduler';
 
 const ClientDashboard = () => {
-  const [view, setView] = useState('dashboard'); 
-  const [createStep, setCreateStep] = useState('upload'); 
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'create' | 'details' | 'video-review' | 'scheduler'
+  const [createStep, setCreateStep] = useState('upload');
   const [uploadedJdText, setUploadedJdText] = useState('');
   const [selectedJob, setSelectedJob] = useState(null);
-  
+  const [schedulerCandidate, setSchedulerCandidate] = useState(null);
+
   // Theme State
   const [isDark, setIsDark] = useState(false);
 
@@ -483,6 +486,36 @@ const ClientDashboard = () => {
                   <span className="font-bold text-sky-600 dark:text-sky-400 truncate max-w-[200px]">{selectedJob.title}</span>
                 </>
               )}
+              {view === 'video-review' && (
+                <>
+                  <button onClick={() => setView('dashboard')} className="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 font-medium">Overview</button>
+                  <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                  <span className="font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1"><Play className="w-3 h-3"/> Video Review</span>
+                </>
+              )}
+              {view === 'scheduler' && (
+                <>
+                  <button onClick={() => setView('dashboard')} className="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 font-medium">Overview</button>
+                  <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                  <span className="font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1"><Calendar className="w-3 h-3"/> Scheduler</span>
+                </>
+              )}
+            </div>
+
+            {/* Quick nav buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                onClick={() => setView('video-review')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'video-review' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              >
+                <Play className="w-3 h-3" /> Video Review
+              </button>
+              <button
+                onClick={() => { setSchedulerCandidate(null); setView('scheduler'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'scheduler' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              >
+                <Calendar className="w-3 h-3" /> Schedule
+              </button>
             </div>
 
             {/* Controls */}
@@ -546,10 +579,34 @@ const ClientDashboard = () => {
         
         {view === 'details' && selectedJob && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <JobDetailView 
-              job={selectedJob} 
-              onBack={() => setView('dashboard')} 
-              onDelete={() => handleDeleteJob(selectedJob.id)} 
+            <JobDetailView
+              job={selectedJob}
+              onBack={() => setView('dashboard')}
+              onDelete={() => handleDeleteJob(selectedJob.id)}
+            />
+          </div>
+        )}
+
+        {/* VIEW: ASYNC VIDEO REVIEW */}
+        {view === 'video-review' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 -mx-4 sm:-mx-6">
+            <AsyncVideoReview
+              onBack={() => setView('dashboard')}
+              onScheduleInterview={(candidate) => {
+                setSchedulerCandidate(candidate);
+                setView('scheduler');
+              }}
+            />
+          </div>
+        )}
+
+        {/* VIEW: INTERVIEW SCHEDULER */}
+        {view === 'scheduler' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <InterviewScheduler
+              candidate={schedulerCandidate}
+              onBack={() => setView(schedulerCandidate ? 'video-review' : 'dashboard')}
+              onConfirm={() => setView('dashboard')}
             />
           </div>
         )}
