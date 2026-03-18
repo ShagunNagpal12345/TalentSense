@@ -88,6 +88,13 @@ export const useApplicationStore = create(
         )
       })),
 
+      // Update interview data on an application by jobId (used when scheduler confirms)
+      updateApplicationInterview: (jobId, interviewData) => set((state) => ({
+        applications: state.applications.map(a =>
+          a.jobId === jobId ? { ...a, interview: interviewData, status: 'interviewing' } : a
+        )
+      })),
+
       // Add a real application when they click "Apply"
       addApplication: (job) => {
         const currentApps = get().applications;

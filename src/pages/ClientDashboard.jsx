@@ -325,7 +325,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, LayoutGrid, ChevronRight,
-  Sun, Moon, Sparkles, Play, Calendar, Kanban
+  Sun, Moon, Sparkles, Play, Calendar, Kanban, ExternalLink
 } from 'lucide-react';
 
 // IMPORT THE STORE
@@ -340,6 +340,7 @@ import AsyncVideoReview from '../components/client/AsyncVideoReview';
 import InterviewScheduler from '../components/shared/InterviewScheduler';
 import ClientCandidateModal from '../components/client/ClientCandidateModal';
 import NotificationBell from '../components/shared/NotificationBell';
+import CandidatePortfolioModal from '../components/shared/CandidatePortfolioModal';
 
 // Feature 10: Requisition Kanban sub-component
 const REQ_KANBAN_COLS = ['Submitted', 'Shortlisted', 'Interview', 'Offer', 'Rejected'];
@@ -435,6 +436,21 @@ const RequisitionKanban = () => {
                     </span>
                     <span className="text-[10px] text-slate-400">{c.noticePeriod || ''}</span>
                   </div>
+                  {/* Interview Details Badge */}
+                  {c.interview && (
+                    <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-lg text-[10px]">
+                      <p className="font-bold text-purple-600 flex items-center gap-1 mb-1">
+                        <Calendar size={10} /> {c.interview.date}
+                      </p>
+                      <p className="text-slate-500">{c.interview.time}</p>
+                      {c.interview.meetingLink && (
+                        <a href={c.interview.meetingLink} target="_blank" rel="noreferrer"
+                          className="text-[#0A66C2] font-bold hover:underline flex items-center gap-1 mt-1">
+                          <ExternalLink size={10} /> Join
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               {getColCandidates(col).length === 0 && (
@@ -448,9 +464,10 @@ const RequisitionKanban = () => {
       </div>
 
       {selectedKanbanCandidate && (
-        <ClientCandidateModal
+        <CandidatePortfolioModal
           candidate={selectedKanbanCandidate}
           onClose={() => setSelectedKanbanCandidate(null)}
+          viewerPortal="client"
         />
       )}
     </div>

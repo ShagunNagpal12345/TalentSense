@@ -1,8 +1,8 @@
 import React from 'react';
-import { 
-  Briefcase, Building2, MapPin, Clock, 
-  CheckCircle2, XCircle, AlertCircle, 
-  MoreHorizontal, ChevronRight, FileText
+import {
+  Briefcase, Building2, MapPin, Clock,
+  CheckCircle2, XCircle, AlertCircle,
+  MoreHorizontal, ChevronRight, FileText, Calendar, ExternalLink
 } from 'lucide-react';
 import { useApplicationStore } from '../../core/stores/applicationStore';
 
@@ -97,6 +97,23 @@ const ApplicationKanban = () => {
                           <Clock size={12}/> Applied: {new Date(app.appliedDate).toLocaleDateString()}
                         </div>
                       </div>
+
+                      {/* INTERVIEW DETAILS BADGE */}
+                      {app.interview && (
+                        <div className="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <Calendar size={11}/> Interview Scheduled
+                          </p>
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{app.interview.date}</p>
+                          <p className="text-xs text-slate-500">{app.interview.time} · {app.interview.type}</p>
+                          {app.interview.meetingLink && (
+                            <a href={app.interview.meetingLink} target="_blank" rel="noreferrer"
+                              className="mt-2 flex items-center gap-1 text-[11px] font-bold text-[#0A66C2] hover:underline">
+                              <ExternalLink size={11}/> Join Meeting
+                            </a>
+                          )}
+                        </div>
+                      )}
 
                       {/* DYNAMIC FOOTER BASED ON STATUS */}
                       {app.status === 'offered' ? (

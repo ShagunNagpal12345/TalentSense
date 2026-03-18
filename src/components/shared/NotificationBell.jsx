@@ -31,11 +31,14 @@ const formatTime = (iso) => {
   return `${days}d ago`;
 };
 
-const NotificationBell = ({ accentColor = '#0A66C2' }) => {
+const NotificationBell = ({ accentColor = '#0A66C2', portal }) => {
   const [open, setOpen] = useState(false);
-  const { notifications, markRead, markAllRead, getUnreadCount } = useNotificationStore();
-  const unreadCount = getUnreadCount();
+  const { notifications, markRead, markAllRead } = useNotificationStore();
   const dropdownRef = useRef(null);
+
+  // Filter notifications by portal if a portal prop is provided
+  const portalNotifications = notifications.filter(n => !portal || n.portal === portal);
+  const unreadCount = portalNotifications.filter(n => !n.read).length;
 
   // Close on outside click
   useEffect(() => {
@@ -93,13 +96,13 @@ const NotificationBell = ({ accentColor = '#0A66C2' }) => {
 
           {/* Notification List */}
           <div className="max-h-[360px] overflow-y-auto custom-scrollbar divide-y divide-slate-50 dark:divide-slate-800">
-            {notifications.length === 0 ? (
+            {portalNotifications.length === 0 ? (
               <div className="py-10 text-center">
                 <Bell size={28} className="mx-auto text-slate-200 dark:text-slate-700 mb-2" />
                 <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">No notifications yet</p>
               </div>
             ) : (
-              notifications.map((notif) => {
+              portalNotifications.map((notif) => {
                 const IconComp = TYPE_ICONS[notif.type] || TYPE_ICONS.default;
                 const colorClass = TYPE_COLORS[notif.type] || TYPE_COLORS.default;
                 return (
@@ -129,10 +132,10 @@ const NotificationBell = ({ accentColor = '#0A66C2' }) => {
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
+          {portalNotifications.length > 0 && (
             <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
               <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 font-medium">
-                Showing {notifications.length} notifications
+                Showing {portalNotifications.length} notifications
               </p>
             </div>
           )}

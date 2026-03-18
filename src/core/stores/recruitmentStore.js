@@ -277,8 +277,8 @@ export const useRecruitmentStore = create(
           const { useNotificationStore } = require('./notificationStore');
           useNotificationStore.getState().addNotification({
             type: 'position_created',
-            message: `New position created: ${newJob.title}`,
-            portal: 'client'
+            message: `New position posted: ${newJob.title} at ${newJob.client || 'a client'}`,
+            portal: 'recruiter'
           });
         } catch (e) {}
       },
@@ -349,7 +349,7 @@ export const useRecruitmentStore = create(
 
           useApplicationStore.getState().updateStatusByJobId(candidate.jobId, mappedStatus);
 
-          // Notify
+          // Notify recruiter about stage change
           try {
             const { useNotificationStore } = require('./notificationStore');
             useNotificationStore.getState().addNotification({
@@ -357,6 +357,15 @@ export const useRecruitmentStore = create(
               message: `${candidate.name} moved to ${newStage}`,
               portal: 'recruiter'
             });
+
+            // Also notify client if candidate is being submitted for Client Review
+            if (newStage.toLowerCase().includes('client') || newStage === 'Client Review') {
+              useNotificationStore.getState().addNotification({
+                type: 'stage_change',
+                message: `${candidate.name} was submitted for Client Review on ${candidate.role || 'a role'}`,
+                portal: 'client'
+              });
+            }
           } catch (e) {}
         }
 

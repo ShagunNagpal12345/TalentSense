@@ -3,7 +3,7 @@ import {
   MoreHorizontal, Plus, Search,
   ArrowRight, Briefcase, ArrowLeft, XCircle, FileText,
   X, User, Mail, Phone, MapPin, Calendar, Video, Link, CheckCircle,
-  BrainCircuit, Clock, Star
+  BrainCircuit, Clock, Star, ExternalLink
 } from 'lucide-react';
 import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
 import { useScheduleStore } from '../../core/stores/scheduleStore';
@@ -11,6 +11,7 @@ import { useApplicationStore } from '../../core/stores/applicationStore';
 
 import RecruiterCandidateDetail from './RecruiterCandidateDetail';
 import RecruiterJobDetailModal from './RecruiterJobDetailModal';
+import CandidatePortfolioModal from '../shared/CandidatePortfolioModal';
 
 const COLUMNS_CONFIG = {
   sourced: { id: 'Sourced', title: 'Sourced', color: 'border-slate-300', bg: 'bg-slate-50' },
@@ -198,10 +199,20 @@ const ScheduleInterviewModal = ({ candidate, jobTitle, onClose, onScheduled }) =
     // Save to schedule store
     scheduleInterview(interviewData);
 
+    const interviewRecord = {
+      date: interviewData.date,
+      time: form.time,
+      type: form.type,
+      duration: form.duration,
+      meetingLink: form.meetingLink,
+      interviewer: form.interviewer
+    };
+
     // Update candidate record
     updateCandidate(candidate.id, {
       status: 'Interview',
       stage: 'Interview',
+      interview: interviewRecord,
       interviewScheduled: {
         date: interviewData.date,
         time: form.time,
@@ -210,9 +221,10 @@ const ScheduleInterviewModal = ({ candidate, jobTitle, onClose, onScheduled }) =
       }
     });
 
-    // Sync to application store
+    // Sync to application store — update status and interview data
     if (candidate.jobId) {
       updateStatusByJobId(candidate.jobId, 'interviewing');
+      useApplicationStore.getState().updateApplicationInterview(candidate.jobId, interviewRecord);
     }
 
     setSaved(true);
@@ -357,6 +369,7 @@ const RecruiterKanban = ({ jobId, jobTitle, onBack, onAddCandidate }) => {
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [dossierCandidate, setDossierCandidate] = useState(null);       // Feature 5
   const [scheduleCandidate, setScheduleCandidate] = useState(null);     // Feature 6
+  const [portfolioCandidate, setPortfolioCandidate] = useState(null);   // Unified Portfolio Modal
 
   const stagesList = Object.values(COLUMNS_CONFIG).map(c => c.id);
 
@@ -462,9 +475,9 @@ const RecruiterKanban = ({ jobId, jobTitle, onBack, onAddCandidate }) => {
                         {candidate.name.charAt(0)}
                       </div>
                       <div>
-                        {/* Feature 5: Clickable name opens dossier */}
+                        {/* Clickable name opens unified Portfolio Modal */}
                         <button
-                          onClick={() => setDossierCandidate(candidate)}
+                          onClick={() => setPortfolioCandidate(candidate)}
                           className={`text-sm font-bold leading-tight hover:text-indigo-600 dark:hover:text-indigo-400 transition text-left ${col.id === 'Rejected' ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-white'}`}
                         >
                           {candidate.name}
@@ -472,6 +485,22 @@ const RecruiterKanban = ({ jobId, jobTitle, onBack, onAddCandidate }) => {
                         <p className="text-xs text-slate-500 dark:text-slate-400">{candidate.role}</p>
                       </div>
                     </div>
+
+                    {/* Interview Details Badge */}
+                    {candidate.interview && (
+                      <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded-lg text-[10px]">
+                        <p className="font-bold text-purple-600 flex items-center gap-1 mb-1">
+                          <Calendar size={10} /> {candidate.interview.date}
+                        </p>
+                        <p className="text-slate-500">{candidate.interview.time}</p>
+                        {candidate.interview.meetingLink && (
+                          <a href={candidate.interview.meetingLink} target="_blank" rel="noreferrer"
+                            className="text-[#0A66C2] font-bold hover:underline flex items-center gap-1 mt-1">
+                            <ExternalLink size={10} /> Join
+                          </a>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-50 dark:border-slate-800">
                        {col.id !== 'Sourced' && (
@@ -526,11 +555,21 @@ const RecruiterKanban = ({ jobId, jobTitle, onBack, onAddCandidate }) => {
         />
       )}
 
-      {/* Feature 5: DOSSIER DRAWER */}
+      {/* Feature 5: DOSSIER DRAWER (kept as fallback) */}
       {dossierCandidate && (
         <CandidateDossierDrawer
           candidate={dossierCandidate}
           onClose={() => setDossierCandidate(null)}
+        />
+      )}
+
+      {/* Unified Portfolio Modal */}
+      {portfolioCandidate && (
+        <CandidatePortfolioModal
+          candidate={portfolioCandidate}
+          job={currentJob}
+          onClose={() => setPortfolioCandidate(null)}
+          viewerPortal="recruiter"
         />
       )}
 

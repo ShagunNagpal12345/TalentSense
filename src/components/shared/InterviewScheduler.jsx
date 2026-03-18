@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useScheduleStore } from '../../core/stores/scheduleStore';
 import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
+import { useApplicationStore } from '../../core/stores/applicationStore';
 
 // Generate mock available dates for the next 3 weeks
 const generateAvailableDates = () => {
@@ -56,6 +57,7 @@ const InterviewScheduler = ({ candidate: propCandidate, onBack, onConfirm }) => 
   const allCandidates = useRecruitmentStore(state => state.candidates);
   const allJobs = useRecruitmentStore(state => state.jobs);
   const updateCandidate = useRecruitmentStore(state => state.updateCandidate);
+  const updateApplicationInterview = useApplicationStore(state => state.updateApplicationInterview);
 
   const availableDates = generateAvailableDates();
 
@@ -134,9 +136,19 @@ const InterviewScheduler = ({ candidate: propCandidate, onBack, onConfirm }) => 
 
     scheduleInterview(interview);
 
+    const interviewData = {
+      date: dateStr,
+      time: selectedTime,
+      type: selectedType,
+      duration: selectedDuration,
+      meetingLink: meetingLink,
+      interviewer: interviewerName
+    };
+
     // Update candidate record if we have one
     if (activeCandidate?.id) {
       updateCandidate(activeCandidate.id, {
+        interview: interviewData,
         interviewScheduled: {
           date: dateStr,
           time: selectedTime,
@@ -144,6 +156,12 @@ const InterviewScheduler = ({ candidate: propCandidate, onBack, onConfirm }) => 
           meetingLink: meetingLink
         }
       });
+    }
+
+    // Sync interview data to application store so Candidate Kanban shows it
+    const jobIdForApp = selectedJobId || activeCandidate?.jobId;
+    if (jobIdForApp) {
+      updateApplicationInterview(jobIdForApp, interviewData);
     }
 
     setShowConfirmation(true);

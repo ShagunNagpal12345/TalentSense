@@ -215,7 +215,18 @@ export const deepResumeAnalysis = async (resumeText, jdText) => {
       matchExplanation: "Candidate has strong core skills matching the JD. Missing TypeScript but otherwise a solid fit.",
       aiDecision: "Good match - recommend interview",
       educationAnalysis: "B.Tech CS is a solid foundation for this role.",
-      experienceAnalysis: "5 years of relevant experience with hands-on React and Node.js development."
+      experienceAnalysis: "5 years of relevant experience with hands-on React and Node.js development.",
+      ctcAnalysis: {
+        jobMinCTC: "Not specified",
+        jobMaxCTC: "Not specified",
+        candidateExpectedCTC: "Not specified",
+        ctcFit: "Unknown"
+      },
+      noticePeriodAnalysis: {
+        jobRequirement: "Not specified",
+        candidateNoticePeriod: "30 days",
+        noticeFit: "Unknown"
+      }
     };
   }
 
@@ -247,7 +258,18 @@ export const deepResumeAnalysis = async (resumeText, jdText) => {
       "matchExplanation": "String (2-3 sentences)",
       "aiDecision": "String (e.g. 'Strong match - recommend shortlisting')",
       "educationAnalysis": "String",
-      "experienceAnalysis": "String"
+      "experienceAnalysis": "String",
+      "ctcAnalysis": {
+        "jobMinCTC": "String (extracted from JD, e.g. '£85,000' or 'Not specified')",
+        "jobMaxCTC": "String (extracted from JD, e.g. '£110,000' or 'Not specified')",
+        "candidateExpectedCTC": "String (from resume or 'Not specified')",
+        "ctcFit": "String (e.g. 'Within range', 'Above budget', 'Below ask', 'Unknown')"
+      },
+      "noticePeriodAnalysis": {
+        "jobRequirement": "String (from JD, e.g. 'Immediate' or '30 days' or 'Not specified')",
+        "candidateNoticePeriod": "String (from resume or 'Not specified')",
+        "noticeFit": "String (e.g. 'Meets requirement', 'Exceeds requirement', 'Unknown')"
+      }
     }
   `;
 
@@ -273,7 +295,18 @@ export const deepResumeAnalysis = async (resumeText, jdText) => {
       matchExplanation: "AI analysis encountered an error. Showing fallback evaluation.",
       aiDecision: "Review manually",
       educationAnalysis: "Unable to analyze due to error.",
-      experienceAnalysis: "Unable to analyze due to error."
+      experienceAnalysis: "Unable to analyze due to error.",
+      ctcAnalysis: {
+        jobMinCTC: "Not specified",
+        jobMaxCTC: "Not specified",
+        candidateExpectedCTC: "Not specified",
+        ctcFit: "Unknown"
+      },
+      noticePeriodAnalysis: {
+        jobRequirement: "Not specified",
+        candidateNoticePeriod: "N/A",
+        noticeFit: "Unknown"
+      }
     };
   }
 };

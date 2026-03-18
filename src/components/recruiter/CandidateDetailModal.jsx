@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   X, FileText, Mail, Copy, CheckCircle, ExternalLink,
   User, BrainCircuit, Briefcase, Loader2, PlayCircle, ThumbsUp, ThumbsDown,
-  Zap, BookOpen, Target, XCircle, Star
+  Zap, BookOpen, Target, XCircle, Star, DollarSign
 } from 'lucide-react';
 import { useRecruitmentStore } from '../../core/stores/recruitmentStore';
 import { generateClientEmail } from '../../core/services/emailGroqService';
@@ -21,12 +21,12 @@ const CandidateDetailModal = ({ candidate: candidateProp, job, onClose }) => {
   const [emailData, setEmailData] = useState({ subject: "", body: "" });
   const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
   
-  const [hasRunAnalysis, setHasRunAnalysis] = useState(
-    // Pre-populate if candidate already has aiAnalysis stored
-    !!(candidateProp?.aiAnalysis)
-  );
+  const [hasRunAnalysis, setHasRunAnalysis] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [localDeepAnalysis, setLocalDeepAnalysis] = useState(candidateProp?.aiAnalysis || null);
+  const [localDeepAnalysis, setLocalDeepAnalysis] = useState(null);
+
+  // Derive whether analysis is available from the live store candidate
+  const hasStoredAnalysis = !!(candidate?.aiAnalysis);
 
   const handleRunAnalysis = async () => {
     setIsAnalyzing(true);
@@ -112,7 +112,7 @@ const CandidateDetailModal = ({ candidate: candidateProp, job, onClose }) => {
             </div>
           </div>
           <div className="flex gap-4 items-center">
-             {hasRunAnalysis ? (
+             {(hasStoredAnalysis || hasRunAnalysis) ? (
                <div className="text-right">
                   <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">AI Match</span>
                   <span className={`text-xl font-black ${candidate.match >= 80 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500'}`}>
@@ -135,15 +135,15 @@ const CandidateDetailModal = ({ candidate: candidateProp, job, onClose }) => {
             <button onClick={() => setActiveTab('analysis')} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'analysis' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
               <BrainCircuit className="w-4 h-4"/> AI Match Analysis
             </button>
-            <button onClick={handleGeneratePitch} disabled={!hasRunAnalysis} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${!hasRunAnalysis ? 'opacity-50 cursor-not-allowed' : ''} ${activeTab === 'email' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+            <button onClick={handleGeneratePitch} disabled={!(hasStoredAnalysis || hasRunAnalysis)} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${!(hasStoredAnalysis || hasRunAnalysis) ? 'opacity-50 cursor-not-allowed' : ''} ${activeTab === 'email' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
               <Mail className="w-4 h-4"/> {emailData.body ? "Edit Pitch Email" : "Generate Client Pitch"}
             </button>
           </div>
 
           {activeTab === 'analysis' && (
             <div className="flex-1 flex flex-col animate-in slide-in-from-left-4">
-               
-               {!hasRunAnalysis ? (
+
+               {!(hasStoredAnalysis || hasRunAnalysis) ? (
                   <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-emerald-200 dark:border-emerald-800/50 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 p-10 text-center">
                     {isAnalyzing ? (
                       <>
@@ -279,6 +279,37 @@ const CandidateDetailModal = ({ candidate: candidateProp, job, onClose }) => {
                                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{deepAnalysis.experienceAnalysis}</p>
                                </div>
                              )}
+                           </div>
+                         )}
+
+                         {/* CTC & Notice Period Fit */}
+                         {deepAnalysis?.ctcAnalysis && (
+                           <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                             <h3 className="font-bold text-slate-800 dark:text-white mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                               <DollarSign className="w-4 h-4 text-emerald-500"/> CTC & Notice Period Fit
+                             </h3>
+                             <div className="space-y-2 text-sm">
+                               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                 <span className="text-slate-500">Job Budget</span>
+                                 <span className="font-medium">{deepAnalysis.ctcAnalysis.jobMinCTC} – {deepAnalysis.ctcAnalysis.jobMaxCTC}</span>
+                               </div>
+                               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                 <span className="text-slate-500">Candidate Expects</span>
+                                 <span className="font-medium">{deepAnalysis.ctcAnalysis.candidateExpectedCTC}</span>
+                               </div>
+                               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                 <span className="text-slate-500">CTC Fit</span>
+                                 <span className={`font-bold ${deepAnalysis.ctcAnalysis.ctcFit?.toLowerCase().includes('within') ? 'text-emerald-600' : 'text-amber-600'}`}>{deepAnalysis.ctcAnalysis.ctcFit}</span>
+                               </div>
+                               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                 <span className="text-slate-500">Job Notice Req.</span>
+                                 <span className="font-medium">{deepAnalysis.noticePeriodAnalysis?.jobRequirement}</span>
+                               </div>
+                               <div className="flex justify-between py-1.5">
+                                 <span className="text-slate-500">Candidate Notice</span>
+                                 <span className={`font-bold ${deepAnalysis.noticePeriodAnalysis?.noticeFit?.toLowerCase().includes('meets') ? 'text-emerald-600' : 'text-amber-600'}`}>{deepAnalysis.noticePeriodAnalysis?.candidateNoticePeriod} ({deepAnalysis.noticePeriodAnalysis?.noticeFit})</span>
+                               </div>
+                             </div>
                            </div>
                          )}
                        </div>
